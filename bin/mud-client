@@ -1,0 +1,184 @@
+#!/usr/local/bin/php 
+<?php
+
+$port       = 9001;
+$address    = 'localhost';
+
+$port       = 9000;
+$address    = 'balderdash.ru';
+
+$port       = 9000;
+$address    = '192.168.1.33';
+
+define ( 'KEY_ESC', "\x1b" );
+define ( 'KEY_ENTER', "\x0a" );
+define ( 'KEY_BACKSPACE', "\x7f" );
+
+$commands = array(
+    'qй' . KEY_ESC  => 'command_exit',
+    'iш' => 'command_prompt',
+);
+
+function command_manager($command){
+    global $commands;
+    static $cache;
+    if ( !$cache ){
+        foreach ( $commands as $key => $function ){
+            $key = iconv( 'UTF-8', 'KOI8-R', $key );
+            foreach ( str_split( $key ) as $k ){
+                $cache[$k] = $function;
+            }
+        }
+    }
+
+    printf( "KEY: %x\n", ( int ) ord( $command ) );
+
+    if ( isset( $cache[$command] ) ){
+        $cache[$command]();
+        return true;
+    }
+    return false;
+}
+
+function command_exit(  ){
+    global $socket, $address, $port, $pid;
+    posix_kill( $pid, SIGUSR1);
+    pcntl_wait($status); //Protect against Zombie children
+    echo "\nquit\n";
+    exit;
+}
+
+function fget_command( $stream ){
+
+    fwrite( STDOUT, "\n> ");
+
+    $buffer = '';
+    while ( true ){
+        $char = fgetc( $stream );
+        if ( $char === KEY_ENTER ){
+            return $buffer;
+        }
+
+        if ( $char === KEY_ESC ){
+            return false;
+        }
+
+        if ( $char === KEY_BACKSPACE ){
+            $buffer = substr( $buffer, 0, -1 );
+            #echo "\x0D> " . $buffer . " ";
+            echo "\x0D> " . $buffer;
+            continue;
+        }
+
+        $buffer .= $char;
+        echo "\x0D> " . $buffer;
+    }
+}
+
+function command_prompt(  ){
+    global $socket, $address, $port, $pid;
+
+    #system( 'stty icanon echo -cread' );
+    while ( true ){
+
+        $cmd = fget_command( STDIN );
+        if ( $cmd  === false ){
+            echo "\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f";
+            echo "EXIT FROM COMMAND\n";
+            break;
+        }
+
+        $status = @socket_write( $socket, $cmd . "\n" );
+        if ( $status === false){
+
+            $text = "Disconnect from remote host {$address}[$port]: " .  socket_strerror( socket_last_error( )) . "\n";
+            fwrite( STDOUT, $text);
+            posix_kill( $pid, SIGUSR1);
+            pcntl_wait($status); //Protect against Zombie children
+            exit( 0 );
+        }
+    }
+    #system( 'stty -icanon -echo -cread' );
+
+    #echo "# ";
+}
+
+#$port       = 9000;
+#$address    = 'balderdash.ru';
+
+$socket = @socket_create( AF_INET, SOCK_STREAM, SOL_TCP);
+$connected = 0; 
+if ( $socket ){
+    $conected = socket_connect( $socket, $address, $port);
+}
+
+if ( $connected === true) {
+    $text = "Connection successful on IP $address, port $port";
+}
+else{
+    #var_dump( $connected );
+    #$text = "Unable to connect {$address}[$port]: " .  socket_strerror( socket_last_error( )) . "\n";
+    #echo $text;
+    #exit( 1 );
+}
+
+$exit = 0;
+
+#socket_set_nonblock( $socket); 
+$hello = "Hello \033[1;47mТорнел\033[0m\n";
+$hello = iconv( 'UTF-8', 'KOI8-R', $hello );
+echo $hello;
+
+system( 'stty -icanon -echo -cread' );
+
+$pid = pcntl_fork();
+if ($pid == -1) {
+
+     die('could not fork');
+
+} else if ($pid) {
+    // we are the parent
+    #system( 'stty -icanon -echo -cread' );
+
+    while (true){
+        #$string = fread(STDIN, 1024);
+        $input  = fgetc(STDIN);
+        #$input  = false;
+        #fwrite( STDOUT, $string );
+
+        if ( $input === false ){
+            continue;
+        }
+
+        command_manager( $input );
+
+        if ( $input === 'p' ){
+            socket_write( $socket, 'PING' );
+            echo "ping\n# ";
+        }
+
+    }
+
+    posix_kill( $pid, SIGUSR1);
+    pcntl_wait($status); //Protect against Zombie children
+} else {
+    // we are the child
+    while ( true ){
+        #usleep( 30000 );
+
+        $server = @socket_read( $socket, 1024 );
+        if ( $server ){
+            fwrite( STDOUT, trim( $server ). "\n");
+        }
+
+        if ( $server === false ){
+            break;
+        }
+
+        if ( $exit ){
+            break;
+        }
+    }
+}
+
+socket_close( $socket);
