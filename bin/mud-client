@@ -21,13 +21,175 @@ define ( 'KEY_DOWN',    258);
 $GLOBALS['debug'] = 0;
 $GLOBALS['history']['cursor'] = false;
 
-echo `stty -g`;
 
 $commands = array(
     'qй' => 'command_exit',
     'iш' => 'command_prompt',
     'dв' => 'command_debug',
 );
+
+class Output
+{
+    private $window;
+
+    public function __construct(){
+        ncurses_getmaxyx(STDSCR, $row, $col);
+        $this->window = ncurses_newwin($row - 1, $col, 0, 0);
+        ncurses_wborder($this->window, 0, 0, 0, 0, 0, 0, 0, 0);
+        #ncurses_waddstr($this->window, str_pad('-', ($row - 1) * $col));
+
+        ncurses_wrefresh($this->window);
+
+        $this->window = ncurses_newwin($row - 3, $col - 2, 1, 1);
+        ncurses_mvwaddstr($this->window, 0, 0, '# ');
+        ncurses_wrefresh($this->window);
+        ncurses_scrollok($this->window);
+        #ncurses_wstandout($this->window);
+        ncurses_wcolor_set($this->window, 3);
+        #ncurses_refresh();
+    }
+
+    public function add($text){
+
+
+        ncurses_waddstr($this->window, $text);
+        #ncurses_wscrl($this->window, -1);
+        ncurses_wrefresh($this->window);
+
+    }
+}
+
+class Prompt 
+{
+    private $window;
+
+
+    private $row;    
+    private $col;
+
+    /**
+     * @var PromptInput
+     */
+    private $input;
+
+    public function __construct(){
+        ncurses_getmaxyx(STDSCR, $row, $col);
+        $this->window = ncurses_newwin(1, $col, $row-1, 0);
+        $this->row = $row-1;
+        $this->col = 0;
+
+        ncurses_mvwaddstr($this->window, 0, 0, 'ssss');
+        ncurses_wrefresh($this->window);
+
+        $this->input = new PromptInput($this->window);
+    }
+
+    public function getCommand(){
+        #ncurses_mvgetch($this->row, 0);
+        return $this->input->get();
+    }
+}
+
+class PromptInput
+{
+    private $window;
+    public function __construct($window){
+        $this->window = $window;
+    }
+
+    function get(){
+
+        static $history = array();
+        static $cnt = 0;
+
+        #fwrite( STDOUT, "\n\r> ");
+        ncurses_mvwaddstr($this->window, 0, 0, "> ");
+        ncurses_wrefresh($this->window);
+
+        $buffer = '';
+        $output = '';
+        while ( true ){
+            $key    = ncurses_getch( );
+            $char   = chr($key);
+
+            if ( $char === KEY_ENTER ){
+                $GLOBALS['history']['cursor'] = array_search($output, $history);
+                if ($GLOBALS['history']['cursor'] === false){
+                    $history[] = $output;
+                }
+                else {
+                    $GLOBALS['history']['cursor']++;
+                }
+                return $output;
+            }
+
+            if ( $char === KEY_ESC ){
+                #echo "\x0D> " . str_pad(' ', strlen($output));
+                return false;
+            }
+
+            if ( $char === KEY_BACKSPACE ){
+                #echo "\x0D> " . str_pad(' ', strlen($output));
+                $output = substr( $output, 0, -1 );
+                $buffer = $output;
+                #echo "\x0D> " . $output;
+                #ncurses_killchar();
+                continue;
+            }
+
+            if ( $key === KEY_UP ){
+                #echo "\x0D> " . str_pad(' ', strlen($output));
+                $output = history_search($history, $buffer, -1);
+                #echo "\x0D> " . $output;
+                continue;
+            }
+
+            if ( $key === KEY_DOWN ){
+                #echo "\x0D> " . str_pad(' ', strlen($output));
+                $output = history_search($history, $buffer, +1);
+                #echo "\x0D> " . $output;
+                continue;
+            }
+
+            $buffer .= $char;
+            $output .= $char;
+            #echo "\x0D> " . $output;
+            ncurses_mvwaddstr($this->window, 0, 0, "> " . $output);
+            ncurses_wrefresh($this->window);
+        }
+    }
+}
+
+ncurses_init();
+ncurses_refresh();
+#ncurses_start_color();
+ncurses_use_default_colors();
+ncurses_assume_default_colors(-1, 1);
+ncurses_slk_color(1);
+ncurses_def_prog_mode();
+
+#$small = ncurses_newwin(10, 30, 7, 25);
+// border our small window.
+#ncurses_wborder($small,0,0, 0,0, 0,0, 0,0);
+ncurses_refresh();// paint both windows
+// move into the small window and write a string
+#ncurses_mvwaddstr($small, 5, 5, "   Test  String   ");
+// show our handiwork and refresh our small window
+#ncurses_wrefresh($small);
+$prompt = new Prompt();
+$output = new Output();
+#$p->getCommand();
+#$o->add('ddddd');
+#$p->getCommand();
+#$p->getCommand();
+#$p->getCommand();
+#$p->getCommand();
+#$p->getCommand();
+#$p->getCommand();
+
+
+#ncurses_getch();
+
 
 function command_manager($command){
     global $commands;
@@ -58,7 +220,7 @@ function command_exit(  ){
 
     posix_kill( $pid, SIGUSR1);
     pcntl_wait($status); //Protect against Zombie children
-    echo "\nquit\n";
+    ncurses_end();
     exit;
 }
 
@@ -105,70 +267,13 @@ function history_search($history, $prefix, $direction = -1){
     return $prefix;
 }
 
-function fget_command(){
-
-    static $history = array();
-    static $cnt = 0;
-
-    fwrite( STDOUT, "\n\r> ");
-
-    $buffer = '';
-    $output = '';
-    while ( true ){
-        $key    = ncurses_getch( );
-        $char   = chr($key);
-
-        if ( $char === KEY_ENTER ){
-            $GLOBALS['history']['cursor'] = array_search($output, $history);
-            if ($GLOBALS['history']['cursor'] === false){
-                $history[] = $output;
-            }
-            else {
-                $GLOBALS['history']['cursor']++;
-            }
-            return $output;
-        }
-
-        if ( $char === KEY_ESC ){
-            echo "\x0D> " . str_pad(' ', strlen($output));
-            return false;
-        }
-
-        if ( $char === KEY_BACKSPACE ){
-            echo "\x0D> " . str_pad(' ', strlen($output));
-            $output = substr( $output, 0, -1 );
-            $buffer = $output;
-            echo "\x0D> " . $output;
-            #ncurses_killchar();
-            continue;
-        }
-
-        if ( $key === KEY_UP ){
-            echo "\x0D> " . str_pad(' ', strlen($output));
-            $output = history_search($history, $buffer, -1);
-            echo "\x0D> " . $output;
-            continue;
-        }
-
-        if ( $key === KEY_DOWN ){
-            echo "\x0D> " . str_pad(' ', strlen($output));
-            $output = history_search($history, $buffer, +1);
-            echo "\x0D> " . $output;
-            continue;
-        }
-
-        $buffer .= $char;
-        $output .= $char;
-        echo "\x0D> " . $output;
-    }
-}
 
 function command_prompt(  ){
-    global $socket, $address, $port, $pid;
+    global $socket, $address, $port, $pid, $prompt;
 
     while ( true ){
 
-        $cmd = fget_command( STDIN );
+        $cmd = $prompt->getCommand();
         if ( $cmd  === false ){
             break;
         }
@@ -211,6 +316,7 @@ $exit = 0;
 $hello = "Hello \033[1;47mТорнел\033[0m\n";
 $hello = iconv( 'UTF-8', 'KOI8-R', $hello );
 echo $hello;
+$output->add($hello);
 
 #system( 'stty -icanon -echo -cread' );
 
@@ -249,8 +355,8 @@ if ($pid == -1) {
 
     }
 
-    posix_kill( $pid, SIGUSR1);
-    pcntl_wait($status); //Protect against Zombie children
+    #posix_kill( $pid, SIGUSR1);
+    #pcntl_wait($status); //Protect against Zombie children
 } else {
     // we are the child
     while ( true ){
@@ -258,7 +364,8 @@ if ($pid == -1) {
 
         $server = @socket_read( $socket, 1024 );
         if ( $server ){
-            fwrite( STDOUT, trim( $server ). "\n");
+            $output->add($server);
+            #fwrite( STDOUT, trim( $server ). "\n");
         }
 
         if ( $server === false ){
