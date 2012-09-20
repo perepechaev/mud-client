@@ -4,11 +4,11 @@
 $port       = 9000;
 $address    = '192.168.1.33';
 
-$port       = 9001;
-$address    = 'localhost';
-
 $port       = 9000;
 $address    = 'balderdash.ru';
+
+$port       = 9001;
+$address    = 'localhost';
 
 define ( 'KEY_ESC',         "\x1b" );
 define ( 'KEY_ENTER',       "\x0d" );
@@ -19,294 +19,11 @@ define ( 'KEY_UP',          259);
 define ( 'KEY_DOWN',        258);
 
 $GLOBALS['debug'] = 0;
-$GLOBALS['history']['cursor'] = false;
-
-
-$commands = array(
-    'qй' => 'command_exit',
-    'iш' => 'command_prompt',
-    'dв' => 'command_debug',
-);
-
-class Output
-{
-    protected $window;
-    private $colors;
-    protected $cursor = 0;
-
-    public function __construct(){
-        ncurses_getmaxyx(STDSCR, $row, $col);
-        $this->window = ncurses_newwin($row - 1, $col, 0, 0);
-
-        ncurses_wrefresh($this->window);
-        ncurses_scrollok($this->window);
-        ncurses_wattroff($this->window, 1);
-
-        ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
-        $this->colors = array(
-            '30'  => NCURSES_COLOR_BLACK,
-            '31'  => NCURSES_COLOR_RED,
-            '32'  => NCURSES_COLOR_GREEN,
-            '33'  => NCURSES_COLOR_YELLOW,
-            '34'  => NCURSES_COLOR_BLUE,
-            '35'  => NCURSES_COLOR_MAGENTA,
-            '36'  => NCURSES_COLOR_CYAN,
-            '37'  => NCURSES_COLOR_WHITE,
-        );
-        foreach ($this->colors as $color) {
-            ncurses_init_pair($color, $color, -1);
-        }
-    }
-    public function addstr($text){
-        $this->add($text);
-    }
-
-
-    public function add($text){
-
-        $colors = $this->colors;
-
-        $buffer = $text;
-        $output = '';
-        ncurses_curs_set($this->cursor);
-        while ( false !== ($p = strpos($buffer, "\x1b"))){
-            $output = substr($buffer, 0, $p);
-            ncurses_waddstr($this->window, $output);
-
-            $e      = strpos($buffer, "m", $p);
-
-            $pair   = substr($buffer, $p + 2, $e - $p - 2);
-            $pair   = explode(';', $pair);
-            $color  = count($pair) > 1 ? $pair[1] : '37';
-
-            if (isset($colors[$color]) === false){
-                ncurses_end();
-                var_dump("Incorrect color: ", var_export($color, true));
-                var_dump($pair);
-                die;
-            }
-
-            if ($pair[0]){
-                ncurses_wattron($this->window, NCURSES_A_BOLD);
-            }
-            else{
-                ncurses_wattroff($this->window, NCURSES_A_BOLD);
-            }
-
-            if (count($pair) === 1 && $pair[0] === '0'){
-                ncurses_wstandend($this->window);
-                ncurses_wcolor_set($this->window, NCURSES_COLOR_WHITE);
-            }
-            else{
-                ncurses_wcolor_set($this->window, $colors[$color]);
-            }
-
-            $buffer = substr($buffer, $e + 1 );
-        }
-
-        ncurses_waddstr($this->window, $buffer);
-        ncurses_wrefresh($this->window);
-    }
-
-    public function erase(){
-        ncurses_werase($this->window);
-        ncurses_wrefresh($this->window);
-    }
-}
-
-class Prompt extends Output
-{
-    protected $row;    
-    protected $col;
-    protected $cursor = 1;
-
-    /**
-     * @var PromptInput
-     */
-    private $input;
-
-    public function __construct(){
-        ncurses_getmaxyx(STDSCR, $row, $col);
-        $this->window = ncurses_newwin(1, $col, $row-1, 0);
-        $this->row = $row-1;
-        $this->col = 0;
-
-        ncurses_wrefresh($this->window);
-
-        $this->input = new PromptInput($this->window);
-    }
-
-    public function getCommand(){
-        return $this->input->get();
-    }
-}
-
-class PromptInput
-{
-    private $window;
-    public function __construct($window){
-        $this->window = $window;
-    }
-
-    function get(){
-
-        global $iostream;
-
-        static $history = array();
-        static $cnt = 0;
-
-        $buffer = '';
-        $output = '';
-        while ( true ){
-            $iostream->get('prompt')->erase();
-            $iostream->get('prompt')->addstr('> ' . $output);
-
-            $key    = ncurses_getch( );
-            $char   = chr($key);
-
-            if ( $char === KEY_ENTER ){
-                $GLOBALS['history']['cursor'] = array_search($output, $history);
-                if ($GLOBALS['history']['cursor'] === false){
-                    $history[] = $output;
-                }
-                else {
-                    $GLOBALS['history']['cursor']++;
-                }
-                return $output;
-            }
-
-            if ( $char === KEY_ESC ){
-                return false;
-            }
-
-            if ( $char === KEY_BACKSPACE ){
-                $output = substr( $output, 0, -1 );
-                $buffer = $output;
-                continue;
-            }
-
-            if ( $key === KEY_UP ){
-                $output = history_search($history, $buffer, -1);
-                continue;
-            }
-
-            if ( $key === KEY_DOWN ){
-                $output = history_search($history, $buffer, +1);
-                continue;
-            }
-
-            $buffer .= $char;
-            $output .= $char;
-        }
-    }
-}
 
 ncurses_init();
-ncurses_start_color();
 ncurses_noecho();
+ncurses_start_color();
 
-$prompt = new Prompt();
-$output = new Output();
-
-function command_manager($command){
-    global $commands;
-    static $cache;
-    if ( !$cache ){
-        foreach ( $commands as $key => $function ){
-            $key = iconv( 'UTF-8', 'KOI8-R', $key );
-            foreach ( str_split( $key ) as $k ){
-                $cache[$k] = $function;
-            }
-        }
-    }
-
-    write_log(sprintf( "KEY: %x", ( int ) ord( $command ) ));
-
-    if ( isset( $cache[$command] ) ){
-        $cache[$command]();
-        return true;
-    }
-    return false;
-}
-
-function command_exit(  ){
-    global $socket, $address, $port, $pid;
-
-    posix_kill( $pid, SIGUSR1);
-    pcntl_wait($status); //Protect against Zombie children
-    ncurses_end();
-
-    exit;
-}
-
-function command_debug(){
-    $GLOBALS['debug'] -= 1;
-    $GLOBALS['debug'] *= $GLOBALS['debug'];
-
-    echo "DEBUG MODE " . ($GLOBALS['debug'] ? 'ENABLED' : 'DISABLED') . "\r\n";
-}
-
-function write_log($info){
-    global $iostream;
-    if ($GLOBALS['debug'] === 0){
-        return;
-    }
-
-    $iostream->get('output')->addstr("\033[0;34m" . $info . "\033[0m\n");
-}
-
-function history_search($history, $prefix, $direction = -1){
-    $cursor = & $GLOBALS['history']['cursor'];
-    if ($cursor === false || $cursor < 0){
-        $cursor = count($history);
-    }
-
-    if ($cursor + $direction > count($history) - 1){
-        $cursor = -1; 
-    }
-
-    for ($i = $cursor + $direction; $i >= 0 && $i < count($history); $i += $direction){
-        if ( substr($history[$i], 0, strlen($prefix)) === $prefix && $history[$i] !== $prefix){
-            $cursor = $i;
-            return $history[$i];
-        }
-    }
-
-    for ($i = count($history) - 1 ; $i > max($cursor, 0) && $i < count($history); $i += $direction){
-        if ( substr($history[$i], 0, strlen($prefix)) === $prefix && $history[$i] !== $prefix){
-            $cursor = $i;
-            return $history[$i];
-        }
-    }
-    $cursor += $direction;
-
-    return $prefix;
-}
-
-
-function command_prompt(  ){
-    global $socket, $address, $port, $pid, $prompt, $iostream;
-
-    while ( true ){
-        $cmd = $prompt->getCommand();
-
-        $iostream->get('prompt')->erase();
-        if ( $cmd  === false ){
-            break;
-        }
-        $iostream->get('output')->addstr("\033[1;33m\n$cmd\033[0m");
-
-        $status = @socket_write( $socket, $cmd . "\n" );
-        if ( $status === false){
-
-            $text = "Disconnect from remote host {$address}[$port]: " .  socket_strerror( socket_last_error( )) . "\n";
-            fwrite( STDOUT, $text);
-            posix_kill( $pid, SIGUSR1);
-            pcntl_wait($status); //Protect against Zombie children
-            exit( 0 );
-        }
-    }
-}
 
 $socket = @socket_create( AF_INET, SOCK_STREAM, SOL_TCP);
 $connected = 0; 
@@ -317,7 +34,17 @@ if ( $socket ){
 
 require_once __DIR__ . '/../lib/client/iostream.php';
 require_once __DIR__ . '/../lib/client/iowindow.php';
-$_REQUEST['force_cli'] = 1;
+
+require_once __DIR__ . '/../lib/client/output.php';
+require_once __DIR__ . '/../lib/client/prompt.php';
+require_once __DIR__ . '/../lib/client/input.php';
+require_once __DIR__ . '/../lib/client/history.php';
+require_once __DIR__ . '/../lib/client/commands.php';
+
+require_once __DIR__ . '/../etc/key-binding.php';
+
+$prompt = new Prompt();
+$output = new Output();
 
 $iostream = new IOStream();
 $iostream->addWindow('output', $output);
