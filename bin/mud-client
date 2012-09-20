@@ -10,13 +10,13 @@ $address    = 'localhost';
 $port       = 9000;
 $address    = 'balderdash.ru';
 
-define ( 'KEY_ESC', "\x1b" );
-define ( 'KEY_ENTER', "\x0d" );
-define ( 'KEY_BACKSPACE', "\x7f" );
-define ( 'KEY_LEFT',    269);
-define ( 'KEY_RIGHT',   261);
-define ( 'KEY_UP',      259);
-define ( 'KEY_DOWN',    258);
+define ( 'KEY_ESC',         "\x1b" );
+define ( 'KEY_ENTER',       "\x0d" );
+define ( 'KEY_BACKSPACE',   "\x7f" );
+define ( 'KEY_LEFT',        269);
+define ( 'KEY_RIGHT',       261);
+define ( 'KEY_UP',          259);
+define ( 'KEY_DOWN',        258);
 
 $GLOBALS['debug'] = 0;
 $GLOBALS['history']['cursor'] = false;
@@ -30,37 +30,19 @@ $commands = array(
 
 class Output
 {
-    private $window;
-
+    protected $window;
     private $colors;
+    protected $cursor = 0;
 
     public function __construct(){
         ncurses_getmaxyx(STDSCR, $row, $col);
         $this->window = ncurses_newwin($row - 1, $col, 0, 0);
-        #ncurses_wborder($this->window, 0, 0, 0, 0, 0, 0, 0, 0);
 
-        ncurses_wrefresh($this->window);
-
-        #$this->window = ncurses_newwin($row - 3, $col - 2, 1, 1);
-        ncurses_mvwaddstr($this->window, 0, 0, '# ');
         ncurses_wrefresh($this->window);
         ncurses_scrollok($this->window);
         ncurses_wattroff($this->window, 1);
 
-        #ncurses_end();
-        #var_dump(NCURSES_A_NORMAL);
-        #var_dump(NCURSES_A_REVERSE);
-        #die;
-
-        #ncurses_bkgd(NCURSES_A_NORMAL);
-        #ncurses_bkgd(NCURSES_COLOR_BLUE);
-        #ncurses_wstandout($this->window);
-        #ncurses_wcolor_set($this->window, 3);
-        #ncurses_refresh();
-
-        #ncurses_wattron($this->window, NCURSES_A_NORMAL);
         ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
-        #ncurses_use_default_colors();
         $this->colors = array(
             '30'  => NCURSES_COLOR_BLACK,
             '31'  => NCURSES_COLOR_RED,
@@ -74,10 +56,11 @@ class Output
         foreach ($this->colors as $color) {
             ncurses_init_pair($color, $color, -1);
         }
-
-        #$b = ncurses_bkgdset(NCURSES_COLOR_BLUE);
-        #$a = ncurses_bkgd();
     }
+    public function addstr($text){
+        $this->add($text);
+    }
+
 
     public function add($text){
 
@@ -85,6 +68,7 @@ class Output
 
         $buffer = $text;
         $output = '';
+        ncurses_curs_set($this->cursor);
         while ( false !== ($p = strpos($buffer, "\x1b"))){
             $output = substr($buffer, 0, $p);
             ncurses_waddstr($this->window, $output);
@@ -103,11 +87,9 @@ class Output
             }
 
             if ($pair[0]){
-                #ncurses_wstandout($this->window);
                 ncurses_wattron($this->window, NCURSES_A_BOLD);
             }
             else{
-                #ncurses_wstandend($this->window);
                 ncurses_wattroff($this->window, NCURSES_A_BOLD);
             }
 
@@ -123,23 +105,20 @@ class Output
         }
 
         ncurses_waddstr($this->window, $buffer);
-
-        #ncurses_waddstr($this->window, "\n\r");
-        #ncurses_waddstr($this->window, "\nDEFAULT: " . $text);
-
-        #ncurses_wscrl($this->window, -1);
         ncurses_wrefresh($this->window);
+    }
 
+    public function erase(){
+        ncurses_werase($this->window);
+        ncurses_wrefresh($this->window);
     }
 }
 
-class Prompt 
+class Prompt extends Output
 {
-    private $window;
-
-
-    private $row;    
-    private $col;
+    protected $row;    
+    protected $col;
+    protected $cursor = 1;
 
     /**
      * @var PromptInput
@@ -152,14 +131,12 @@ class Prompt
         $this->row = $row-1;
         $this->col = 0;
 
-        ncurses_mvwaddstr($this->window, 0, 0, 'ssss');
         ncurses_wrefresh($this->window);
 
         $this->input = new PromptInput($this->window);
     }
 
     public function getCommand(){
-        #ncurses_mvgetch($this->row, 0);
         return $this->input->get();
     }
 }
@@ -173,16 +150,17 @@ class PromptInput
 
     function get(){
 
+        global $iostream;
+
         static $history = array();
         static $cnt = 0;
-
-        #fwrite( STDOUT, "\n\r> ");
-        ncurses_mvwaddstr($this->window, 0, 0, "> ");
-        ncurses_wrefresh($this->window);
 
         $buffer = '';
         $output = '';
         while ( true ){
+            $iostream->get('prompt')->erase();
+            $iostream->get('prompt')->addstr('> ' . $output);
+
             $key    = ncurses_getch( );
             $char   = chr($key);
 
@@ -198,72 +176,37 @@ class PromptInput
             }
 
             if ( $char === KEY_ESC ){
-                #echo "\x0D> " . str_pad(' ', strlen($output));
                 return false;
             }
 
             if ( $char === KEY_BACKSPACE ){
-                #echo "\x0D> " . str_pad(' ', strlen($output));
                 $output = substr( $output, 0, -1 );
                 $buffer = $output;
-                #echo "\x0D> " . $output;
-                #ncurses_killchar();
                 continue;
             }
 
             if ( $key === KEY_UP ){
-                #echo "\x0D> " . str_pad(' ', strlen($output));
                 $output = history_search($history, $buffer, -1);
-                #echo "\x0D> " . $output;
                 continue;
             }
 
             if ( $key === KEY_DOWN ){
-                #echo "\x0D> " . str_pad(' ', strlen($output));
                 $output = history_search($history, $buffer, +1);
-                #echo "\x0D> " . $output;
                 continue;
             }
 
             $buffer .= $char;
             $output .= $char;
-            #echo "\x0D> " . $output;
-            ncurses_mvwaddstr($this->window, 0, 0, "> " . $output);
-            ncurses_wrefresh($this->window);
         }
     }
 }
 
 ncurses_init();
-ncurses_refresh();
 ncurses_start_color();
-ncurses_use_default_colors();
-#ncurses_assume_default_colors(-1, 1);
-#ncurses_slk_color(1);
-#ncurses_def_prog_mode();
+ncurses_noecho();
 
-#$small = ncurses_newwin(10, 30, 7, 25);
-// border our small window.
-#ncurses_wborder($small,0,0, 0,0, 0,0, 0,0);
-ncurses_refresh();// paint both windows
-// move into the small window and write a string
-#ncurses_mvwaddstr($small, 5, 5, "   Test  String   ");
-// show our handiwork and refresh our small window
-#ncurses_wrefresh($small);
 $prompt = new Prompt();
 $output = new Output();
-#$p->getCommand();
-#$o->add('ddddd');
-#$p->getCommand();
-#$p->getCommand();
-#$p->getCommand();
-#$p->getCommand();
-#$p->getCommand();
-#$p->getCommand();
-
-
-#ncurses_getch();
-
 
 function command_manager($command){
     global $commands;
@@ -289,12 +232,10 @@ function command_manager($command){
 function command_exit(  ){
     global $socket, $address, $port, $pid;
 
-    #$c = fgetc(STDIN);
-    #printf("KEY: %x\n", (int) ord($c));
-
     posix_kill( $pid, SIGUSR1);
     pcntl_wait($status); //Protect against Zombie children
     ncurses_end();
+
     exit;
 }
 
@@ -306,11 +247,12 @@ function command_debug(){
 }
 
 function write_log($info){
+    global $iostream;
     if ($GLOBALS['debug'] === 0){
         return;
     }
 
-    fwrite(STDOUT, "\033[0;33m" . $info . "\033[0m\r\n");
+    $iostream->get('output')->addstr("\033[0;34m" . $info . "\033[0m\n");
 }
 
 function history_search($history, $prefix, $direction = -1){
@@ -343,14 +285,16 @@ function history_search($history, $prefix, $direction = -1){
 
 
 function command_prompt(  ){
-    global $socket, $address, $port, $pid, $prompt;
+    global $socket, $address, $port, $pid, $prompt, $iostream;
 
     while ( true ){
-
         $cmd = $prompt->getCommand();
+
+        $iostream->get('prompt')->erase();
         if ( $cmd  === false ){
             break;
         }
+        $iostream->get('output')->addstr("\033[1;33m\n$cmd\033[0m");
 
         $status = @socket_write( $socket, $cmd . "\n" );
         if ( $status === false){
@@ -362,11 +306,7 @@ function command_prompt(  ){
             exit( 0 );
         }
     }
-    echo "\x0D#";
 }
-
-#$port       = 9000;
-#$address    = 'balderdash.ru';
 
 $socket = @socket_create( AF_INET, SOCK_STREAM, SOL_TCP);
 $connected = 0; 
@@ -374,25 +314,15 @@ if ( $socket ){
     $conected = socket_connect( $socket, $address, $port);
 }
 
-if ( $connected === true) {
-    $text = "Connection successful on IP $address, port $port";
-}
-else{
-    #var_dump( $connected );
-    #$text = "Unable to connect {$address}[$port]: " .  socket_strerror( socket_last_error( )) . "\n";
-    #echo $text;
-    #exit( 1 );
-}
 
-$exit = 0;
+require_once __DIR__ . '/../lib/client/iostream.php';
+require_once __DIR__ . '/../lib/client/iowindow.php';
+$_REQUEST['force_cli'] = 1;
 
-#socket_set_nonblock( $socket); 
-$hello = "Hello \033[1;33mТорнел\033[0m!\033[1;37mСегодня\033[0;37mпрекрасный день\n\n1\033[1;32m1\033[0m1";
-$hello = iconv( 'UTF-8', 'KOI8-R', $hello );
-#echo $hello;
-$output->add($hello);
-
-#system( 'stty -icanon -echo -cread' );
+$iostream = new IOStream();
+$iostream->addWindow('output', $output);
+$iostream->addWindow('prompt', $prompt);
+$iostream->run();
 
 $pid = pcntl_fork();
 if ($pid == -1) {
@@ -400,56 +330,28 @@ if ($pid == -1) {
      die('could not fork');
 
 } else if ($pid) {
-    // we are the parent
-    #system( 'stty -icanon -echo -cread' );
-    ncurses_init();
-    ncurses_noecho();
 
     while (true){
         #$input  = fgetc(STDIN);
 
         $input = ncurses_getch();
-        if ($input === 0x1b){
-            printf("ESC");
-        }
         $input = chr($input);
-        write_log(sprintf("CHAR %s ord(%d)", $input, (int) ord($input)));
 
+        write_log(sprintf("CHAR %s ord(%d)", $input, (int) ord($input)));
 
         if ( $input === false ){
             continue;
         }
 
         command_manager( $input );
-
-        if ( $input === 'p' ){
-            socket_write( $socket, 'PING' );
-            write_log('ping');
-        }
-
     }
-
-    #posix_kill( $pid, SIGUSR1);
-    #pcntl_wait($status); //Protect against Zombie children
-} else {
+} 
+else {
     // we are the child
     while ( true ){
-        #usleep( 30000 );
-
         $server = @socket_read( $socket, 1024 );
         if ( $server ){
-            $output->add($server);
-            #fwrite( STDOUT, trim( $server ). "\n");
-        }
-
-        if ( $server === false ){
-            break;
-        }
-
-        if ( $exit ){
-            break;
+            $iostream->send('output', $server);
         }
     }
 }
-
-socket_close( $socket);
