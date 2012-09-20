@@ -4,11 +4,11 @@
 $port       = 9000;
 $address    = '192.168.1.33';
 
-$port       = 9000;
-$address    = 'balderdash.ru';
-
 $port       = 9001;
 $address    = 'localhost';
+
+$port       = 9000;
+$address    = 'balderdash.ru';
 
 define ( 'KEY_ESC', "\x1b" );
 define ( 'KEY_ENTER', "\x0d" );
@@ -32,27 +32,101 @@ class Output
 {
     private $window;
 
+    private $colors;
+
     public function __construct(){
         ncurses_getmaxyx(STDSCR, $row, $col);
         $this->window = ncurses_newwin($row - 1, $col, 0, 0);
-        ncurses_wborder($this->window, 0, 0, 0, 0, 0, 0, 0, 0);
-        #ncurses_waddstr($this->window, str_pad('-', ($row - 1) * $col));
+        #ncurses_wborder($this->window, 0, 0, 0, 0, 0, 0, 0, 0);
 
         ncurses_wrefresh($this->window);
 
-        $this->window = ncurses_newwin($row - 3, $col - 2, 1, 1);
+        #$this->window = ncurses_newwin($row - 3, $col - 2, 1, 1);
         ncurses_mvwaddstr($this->window, 0, 0, '# ');
         ncurses_wrefresh($this->window);
         ncurses_scrollok($this->window);
+        ncurses_wattroff($this->window, 1);
+
+        #ncurses_end();
+        #var_dump(NCURSES_A_NORMAL);
+        #var_dump(NCURSES_A_REVERSE);
+        #die;
+
+        #ncurses_bkgd(NCURSES_A_NORMAL);
+        #ncurses_bkgd(NCURSES_COLOR_BLUE);
         #ncurses_wstandout($this->window);
-        ncurses_wcolor_set($this->window, 3);
+        #ncurses_wcolor_set($this->window, 3);
         #ncurses_refresh();
+
+        #ncurses_wattron($this->window, NCURSES_A_NORMAL);
+        ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
+        #ncurses_use_default_colors();
+        $this->colors = array(
+            '30'  => NCURSES_COLOR_BLACK,
+            '31'  => NCURSES_COLOR_RED,
+            '32'  => NCURSES_COLOR_GREEN,
+            '33'  => NCURSES_COLOR_YELLOW,
+            '34'  => NCURSES_COLOR_BLUE,
+            '35'  => NCURSES_COLOR_MAGENTA,
+            '36'  => NCURSES_COLOR_CYAN,
+            '37'  => NCURSES_COLOR_WHITE,
+        );
+        foreach ($this->colors as $color) {
+            ncurses_init_pair($color, $color, -1);
+        }
+
+        #$b = ncurses_bkgdset(NCURSES_COLOR_BLUE);
+        #$a = ncurses_bkgd();
     }
 
     public function add($text){
 
+        $colors = $this->colors;
 
-        ncurses_waddstr($this->window, $text);
+        $buffer = $text;
+        $output = '';
+        while ( false !== ($p = strpos($buffer, "\x1b"))){
+            $output = substr($buffer, 0, $p);
+            ncurses_waddstr($this->window, $output);
+
+            $e      = strpos($buffer, "m", $p);
+
+            $pair   = substr($buffer, $p + 2, $e - $p - 2);
+            $pair   = explode(';', $pair);
+            $color  = count($pair) > 1 ? $pair[1] : '37';
+
+            if (isset($colors[$color]) === false){
+                ncurses_end();
+                var_dump("Incorrect color: ", var_export($color, true));
+                var_dump($pair);
+                die;
+            }
+
+            if ($pair[0]){
+                #ncurses_wstandout($this->window);
+                ncurses_wattron($this->window, NCURSES_A_BOLD);
+            }
+            else{
+                #ncurses_wstandend($this->window);
+                ncurses_wattroff($this->window, NCURSES_A_BOLD);
+            }
+
+            if (count($pair) === 1 && $pair[0] === '0'){
+                ncurses_wstandend($this->window);
+                ncurses_wcolor_set($this->window, NCURSES_COLOR_WHITE);
+            }
+            else{
+                ncurses_wcolor_set($this->window, $colors[$color]);
+            }
+
+            $buffer = substr($buffer, $e + 1 );
+        }
+
+        ncurses_waddstr($this->window, $buffer);
+
+        #ncurses_waddstr($this->window, "\n\r");
+        #ncurses_waddstr($this->window, "\nDEFAULT: " . $text);
+
         #ncurses_wscrl($this->window, -1);
         ncurses_wrefresh($this->window);
 
@@ -162,11 +236,11 @@ class PromptInput
 
 ncurses_init();
 ncurses_refresh();
-#ncurses_start_color();
+ncurses_start_color();
 ncurses_use_default_colors();
-ncurses_assume_default_colors(-1, 1);
-ncurses_slk_color(1);
-ncurses_def_prog_mode();
+#ncurses_assume_default_colors(-1, 1);
+#ncurses_slk_color(1);
+#ncurses_def_prog_mode();
 
 #$small = ncurses_newwin(10, 30, 7, 25);
 // border our small window.
@@ -313,9 +387,9 @@ else{
 $exit = 0;
 
 #socket_set_nonblock( $socket); 
-$hello = "Hello \033[1;47mТорнел\033[0m\n";
+$hello = "Hello \033[1;33mТорнел\033[0m!\033[1;37mСегодня\033[0;37mпрекрасный день\n\n1\033[1;32m1\033[0m1";
 $hello = iconv( 'UTF-8', 'KOI8-R', $hello );
-echo $hello;
+#echo $hello;
 $output->add($hello);
 
 #system( 'stty -icanon -echo -cread' );
