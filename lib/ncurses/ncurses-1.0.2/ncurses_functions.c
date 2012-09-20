@@ -985,6 +985,42 @@ PHP_FUNCTION(ncurses_scrl)
 }
 /* }}} */
 
+
+/* {{{ proto int ncurses_wscrl(resource window)
+   Scroll windwow content */
+PHP_FUNCTION(ncurses_wscrl)
+{
+	zval *handle;
+	WINDOW **win;
+    long n;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &handle, &n) == FAILURE) {
+	        return;
+	}
+	FETCH_WINRES(win, &handle);
+
+	RETURN_LONG(wscrl(*win, n));
+}
+/* }}} */
+
+/* {{{ proto int ncurses_scrollok(resource window)
+   Scroll windwow content */
+PHP_FUNCTION(ncurses_scrollok)
+{
+	zval *handle;
+	WINDOW **win;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &handle) == FAILURE) {
+		return;
+	}
+
+	FETCH_WINRES(win, &handle);
+
+	RETURN_LONG(scrollok(*win, 1));
+}
+/* }}} */
+
+
 /* {{{ proto int ncurses_slk_attroff(int intarg)
    ??? */
 PHP_FUNCTION(ncurses_slk_attroff)

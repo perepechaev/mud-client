@@ -65,10 +65,10 @@ See also http://www.gnu.org/software/ncurses/ncurses.html</description>
    <file md5sum="5046b9522fd328b845b0f3e9ac7cb36e" name="example1.php" role="doc" />
    <file md5sum="52ee53052fc16b8826b2141e4ad2d5cf" name="ncurses.c" role="src" />
    <file md5sum="f2f7b5125f69ab1855b10228954809af" name="ncurses.php" role="src" />
-   <file md5sum="34be7ea506ea02dc95c0f76a817365b3" name="ncurses_fe.c" role="src" />
-   <file md5sum="8097b3c156daae4f123b8b03980a7817" name="ncurses_functions.c" role="src" />
+   <file name="ncurses_fe.c" role="src" />
+   <file name="ncurses_functions.c" role="src" />
    <file md5sum="caf76c75d7a40ed5459ce69520d1c99e" name="php_ncurses.h" role="src" />
-   <file md5sum="c9ebf0a43f195159f6be9052f9958480" name="php_ncurses_fe.h" role="src" />
+   <file name="php_ncurses_fe.h" role="src" />
   </dir>
  </contents>
  <dependencies>

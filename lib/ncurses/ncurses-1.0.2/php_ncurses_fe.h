@@ -93,6 +93,8 @@ PHP_FUNCTION(ncurses_insdelln);
 PHP_FUNCTION(ncurses_mouseinterval);
 PHP_FUNCTION(ncurses_napms);
 PHP_FUNCTION(ncurses_scrl);
+PHP_FUNCTION(ncurses_wscrl);
+PHP_FUNCTION(ncurses_scrollok);
 PHP_FUNCTION(ncurses_slk_attroff);
 PHP_FUNCTION(ncurses_slk_attron);
 PHP_FUNCTION(ncurses_slk_attrset);

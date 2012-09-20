@@ -143,6 +143,8 @@ zend_function_entry ncurses_functions[] = {
 	PHP_FE(ncurses_mouseinterval,		NULL)
 	PHP_FE(ncurses_napms,			NULL)
 	PHP_FE(ncurses_scrl,			NULL)
+	PHP_FE(ncurses_wscrl,			NULL)
+	PHP_FE(ncurses_scrollok,			NULL)
 	PHP_FE(ncurses_slk_attroff,		NULL)
 	PHP_FE(ncurses_slk_attron,		NULL)
 	PHP_FE(ncurses_slk_attrset,		NULL)
