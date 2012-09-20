@@ -8,14 +8,7 @@ class History
 	public function add($command){
 		$exist = array_search($command, $this->history);
 		if ($exist !== false){
-
-			global $iostream;
-			$iostream->get('output')->addstr(print_r($this->history, true));
-			#$iostream->get('output')->addstr(var_export($exist, true));
-
 			$slice = array_slice($this->history, $exist + 1);
-			$iostream->get('output')->addstr("SLICE: " . print_r($slice, 1));
-			$iostream->get('output')->addstr("EXISTS: " . var_export($exist, true));
 			array_splice($this->history, $exist, count($slice), $slice);
 			$this->history[count($this->history) - 1] = $command;
 		}
@@ -29,7 +22,8 @@ class History
 	public function search($prefix, $direction = -1){
 		global $iostream;
 
-		$iostream->get('output')->addstr(print_r($this->history, true));
+		// DEBUG
+		// $iostream->get('output')->addstr(print_r($this->history, true));
 
 	    $cursor = $this->cursor;
 	    $history = $this->history;

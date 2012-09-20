@@ -4,11 +4,11 @@
 $port       = 9000;
 $address    = '192.168.1.33';
 
-$port       = 9000;
-$address    = 'balderdash.ru';
-
 $port       = 9001;
 $address    = 'localhost';
+
+$port       = 9000;
+$address    = 'balderdash.ru';
 
 define ( 'KEY_ESC',         "\x1b" );
 define ( 'KEY_ENTER',       "\x0d" );
