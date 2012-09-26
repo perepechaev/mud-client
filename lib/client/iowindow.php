@@ -17,4 +17,8 @@ class IOWindow
 	public function erase(){
 		$this->stream->event($this->name, 'erase');
 	}
+
+	public function scroll($direction = -1){
+		$this->stream->event($this->name, "scroll|$direction");
+	}
 }

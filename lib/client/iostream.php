@@ -65,13 +65,19 @@ class IOStream
 			}
 
 			$commands = explode("\x1b\x1b", $buffer);
+	
 
 			foreach ($commands as $buffer){
 
 				if (substr($buffer, 0, 1) === "\x01"){
 					$name = substr($buffer, 1, strpos($buffer, ".") - 1);	
 					$method = substr($buffer, strpos($buffer, '.') + 1);
-					$this->windows[$name]->{$method}();
+					$params = explode("|", $method);
+					$method = $params[0];
+					unset($params[0]);
+
+					call_user_func_array(array($this->windows[$name], $method), $params);
+					//$this->windows[$name]->{$method}();
 					$buffer = '';
 					continue;
 				}
@@ -86,7 +92,11 @@ class IOStream
 
 				if ($name !== 'prompt' && $name !== 'output'){
 					ncurses_end();
-					dd($name, $buffer);
+					echo "NAME";
+					var_dump($name);
+					echo "BUFFER";
+					var_dump($buffer);
+					die;
 				}
 
 				$this->windows[$name]->add($text);

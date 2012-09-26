@@ -70,10 +70,49 @@ class Output
     }
 
     public function scroll($direction = -1){
+        $start = $this->buffer_line - $this->row + $direction + 2;
+        if ($start < 0){
+            $direction -= $start;
+            $start = 0;
+        }
+
         ncurses_wscrl($this->window, $direction);
-        $this->buffer_line += $direction;
+        ncurses_wmove($this->window, 0, 0);
         ncurses_scrollok($this->window, 0);
-        ncurses_mvwaddstr($this->window, 0, 0, $this->buffer[$this->buffer_line - $this->row + 2]);
+
+        $strings = array_slice($this->buffer, $start,  abs($direction));
+
+        $text = '';
+        foreach ($strings as $string){
+            $last =  ($this->strlen($string) >= $this->col) ? "" : "\n";
+            $text .= $string . $last;
+        }
+        $strings = trim($text);
+
+
+        $this->buffer_line += $direction;
+
+        $lines = $this->parseColorString($strings);
+        foreach ($lines as $line){
+            if (isset($line['bold'])){
+                $line['bold'] ? ncurses_wattron($this->window, NCURSES_A_BOLD)
+                              : ncurses_wattroff($this->window, NCURSES_A_BOLD);
+
+            }
+            if (isset($line['stand'])){
+                // DONT USED
+                //$line['stand'] ? ncurses_wstandend($this->window, NCURSES_A_BOLD)
+                               //: ncurses_wattroff($this->window, NCURSES_A_BOLD);
+            }
+            if (isset($line['color'])){
+                ncurses_wcolor_set($this->window, $line['color']);
+            }
+            if (isset($line['clicolor'])){
+                $this->buffer_last_color = $line['clicolor'];
+            }
+            ncurses_waddstr($this->window, $line['text']);
+
+        }
         ncurses_wrefresh($this->window);
         ncurses_scrollok($this->window, 1);
     }
