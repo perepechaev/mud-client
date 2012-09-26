@@ -12,13 +12,15 @@ class Output
     private $buffer = array();
     private $buffer_last_color = '';
 
+    private $buffer_line = 0;
+
     public function __construct(){
         ncurses_getmaxyx(STDSCR, $row, $col);
         $this->row = $row - 1;
         $this->col = $col;
         $this->window = ncurses_newwin($this->row, $this->col, 0, 0);
 
-        ncurses_scrollok($this->window);
+        ncurses_scrollok($this->window, 1);
         ncurses_wattroff($this->window, 1);
 
         ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
@@ -42,56 +44,38 @@ class Output
 
 
     public function add($text){
+        $lines = $this->parseColorString($text);
 
-        $colors = $this->colors;
+        foreach ($lines as $line){
+            if (isset($line['bold'])){
+                $line['bold'] ? ncurses_wattron($this->window, NCURSES_A_BOLD)
+                              : ncurses_wattroff($this->window, NCURSES_A_BOLD);
 
-        $buffer = $text;
-        $output = '';
-        ncurses_curs_set($this->cursor);
-        while ( false !== ($p = strpos($buffer, "\x1b"))){
-            $output = substr($buffer, 0, $p);
-
-            $this->addToBuffer($output);
-
-            ncurses_waddstr($this->window, $output);
-
-            $e      = strpos($buffer, "m", $p);
-
-            $pair   = substr($buffer, $p + 2, $e - $p - 2);
-            $this->buffer_last_color = "\033[" . $pair . "m";
-
-            $pair   = explode(';', $pair);
-            $color  = count($pair) > 1 ? $pair[1] : '37';
-
-            if (isset($colors[$color]) === false){
-                ncurses_end();
-                var_dump("Incorrect color: ", var_export($color, true));
-                var_dump($pair);
-                die;
             }
-
-            if ($pair[0]){
-                ncurses_wattron($this->window, NCURSES_A_BOLD);
+            if (isset($line['stand'])){
+                // DONT USED
+                //$line['stand'] ? ncurses_wstandend($this->window, NCURSES_A_BOLD)
+                               //: ncurses_wattroff($this->window, NCURSES_A_BOLD);
             }
-            else{
-                ncurses_wattroff($this->window, NCURSES_A_BOLD);
+            if (isset($line['color'])){
+                ncurses_wcolor_set($this->window, $line['color']);
             }
-
-
-            if (count($pair) === 1 && $pair[0] === '0'){
-                ncurses_wstandend($this->window);
-                ncurses_wcolor_set($this->window, NCURSES_COLOR_WHITE);
+            if (isset($line['clicolor'])){
+                $this->buffer_last_color = $line['clicolor'];
             }
-            else{
-                ncurses_wcolor_set($this->window, $colors[$color]);
-            }
-
-            $buffer = substr($buffer, $e + 1 );
+            ncurses_waddstr($this->window, $line['text']);
+            $this->addToBuffer($line['text']);
         }
-
-        $this->addToBuffer($buffer);
-        ncurses_waddstr($this->window, $buffer);
         ncurses_wrefresh($this->window);
+    }
+
+    public function scroll($direction = -1){
+        ncurses_wscrl($this->window, $direction);
+        $this->buffer_line += $direction;
+        ncurses_scrollok($this->window, 0);
+        ncurses_mvwaddstr($this->window, 0, 0, $this->buffer[$this->buffer_line - $this->row + 2]);
+        ncurses_wrefresh($this->window);
+        ncurses_scrollok($this->window, 1);
     }
     
     private function strlen($color_string){
@@ -118,6 +102,7 @@ class Output
                 }
                 $this->buffer_last_color = '';
                 $last_symbol = '';
+                $this->buffer_line = count($this->buffer) - 1;
                 return;
             }
             $this->buffer[count($this->buffer) - 1] .= $this->buffer_last_color . substr($text, 0, strpos($text, "\n"));
@@ -131,6 +116,7 @@ class Output
                 $this->buffer[] = $this->buffer_last_color . $text;
                 $this->buffer_last_color = '';
                 $last_symbol = "\n";
+                $this->buffer_line = count($this->buffer) - 1;
                 return;
             }
         }
@@ -145,7 +131,70 @@ class Output
         foreach ($lines as $line){
             $this->buffer = array_merge($this->buffer, str_split($line, $this->col));
         }
+        $this->buffer_line = count($this->buffer) - 1;
     }
+
+    private function parseColorString($text){
+
+        $result = array();
+        $colors = $this->colors;
+
+        $buffer = $text;
+        $output = '';
+        $line   = array();
+        while ( false !== ($p = strpos($buffer, "\x1b"))){
+            $output = substr($buffer, 0, $p);
+
+            $line['text'] = $output;
+            $result[] = $line;
+
+            $e      = strpos($buffer, "m", $p);
+
+            $pair   = substr($buffer, $p + 2, $e - $p - 2);
+            $line = array();
+            $line['clicolor'] = "\033[" . $pair . "m";
+            $pair   = explode(';', $pair);
+            $color  = count($pair) > 1 ? $pair[1] : '37';
+
+            if (isset($colors[$color]) === false){
+                ncurses_end();
+                var_dump("Incorrect color: ", var_export($color, true));
+                var_dump($pair);
+                die;
+            }
+
+            if ($pair[0]){
+                $line['bold'] = 1;
+                #ncurses_wattron($this->window, NCURSES_A_BOLD);
+            }
+            else{
+                $line['bold'] = 0;
+                #ncurses_wattroff($this->window, NCURSES_A_BOLD);
+            }
+
+
+            if (count($pair) === 1 && $pair[0] === '0'){
+                $line['stand'] =  0;
+                $line['color'] =  NCURSES_COLOR_WHITE;
+                #ncurses_wstandend($this->window);
+                #ncurses_wcolor_set($this->window, NCURSES_COLOR_WHITE);
+            }
+            else{
+                $line['color'] = $colors[$color];
+                #ncurses_wcolor_set($this->window, $colors[$color]);
+            }
+
+            $buffer = substr($buffer, $e + 1 );
+        }
+
+        #$this->addToBuffer($buffer);
+        $line['text'] = $buffer;
+        $result[] = $line;
+        #ncurses_waddstr($this->window, $buffer);
+        #ncurses_wrefresh($this->window);
+        return $result;
+    }
+
 
     public function __destruct(){
         file_put_contents('buffer', implode("\n", $this->buffer) . "\n" );
