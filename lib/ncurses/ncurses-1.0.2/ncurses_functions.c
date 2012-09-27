@@ -1009,14 +1009,16 @@ PHP_FUNCTION(ncurses_scrollok)
 {
 	zval *handle;
 	WINDOW **win;
+    long n;
+    
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r", &handle) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl", &handle, &n) == FAILURE) {
 		return;
 	}
 
 	FETCH_WINRES(win, &handle);
 
-	RETURN_LONG(scrollok(*win, 1));
+	RETURN_LONG(scrollok(*win, n));
 }
 /* }}} */
 
