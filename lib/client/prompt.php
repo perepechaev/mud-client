@@ -25,4 +25,8 @@ class Prompt extends Output
     public function getCommand(){
         return $this->input->get();
     }
+
+    public function addToBuffer($text){
+        return false;
+    }
 }

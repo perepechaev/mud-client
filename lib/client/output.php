@@ -54,8 +54,8 @@ class Output
             }
             if (isset($line['stand'])){
                 // DONT USED
-                //$line['stand'] ? ncurses_wstandend($this->window, NCURSES_A_BOLD)
-                               //: ncurses_wattroff($this->window, NCURSES_A_BOLD);
+                $line['stand'] ? ncurses_wstandend($this->window)
+                               : ncurses_wattroff($this->window, NCURSES_A_BOLD);
             }
             if (isset($line['color'])){
                 ncurses_wcolor_set($this->window, $line['color']);
@@ -70,39 +70,47 @@ class Output
     }
 
     public function scroll($direction = -1){
-        $start = $this->buffer_line - $this->row + $direction + 2;
+        $current = $this->buffer_line - $this->row;
+        $start   = $current + $direction ;
         if ($start < 0){
             $direction -= $start;
             $start = 0;
         }
 
+        if ($start > count($this->buffer) - $this->row){
+            $start = count($this->buffer) - $this->row;
+            $direction = $start - $current;
+        }
+
         ncurses_wscrl($this->window, $direction);
-        ncurses_wmove($this->window, 0, 0);
         ncurses_scrollok($this->window, 0);
 
-        $strings = array_slice($this->buffer, $start,  abs($direction));
+        $lines = min($this->row, abs($direction));
+        if ($direction > 0){
+            // Down
+            ncurses_wmove($this->window, $this->row - $direction, 0);
+            $strings = array_slice($this->buffer, $start + $this->row - $direction, $lines);
+        }
+        else {
+            // Up
+            ncurses_wmove($this->window, 0, 0);
+            $strings = array_slice($this->buffer, $start, $lines);
+        }
 
         $text = '';
         foreach ($strings as $string){
             $last =  ($this->strlen($string) >= $this->col) ? "" : "\n";
             $text .= $string . $last;
         }
-        $strings = trim($text);
+        $strings = rtrim($text);
 
-
-        $this->buffer_line += $direction;
-
+        $this->buffer_line = $start + $this->row;
         $lines = $this->parseColorString($strings);
+
         foreach ($lines as $line){
             if (isset($line['bold'])){
                 $line['bold'] ? ncurses_wattron($this->window, NCURSES_A_BOLD)
                               : ncurses_wattroff($this->window, NCURSES_A_BOLD);
-
-            }
-            if (isset($line['stand'])){
-                // DONT USED
-                //$line['stand'] ? ncurses_wstandend($this->window, NCURSES_A_BOLD)
-                               //: ncurses_wattroff($this->window, NCURSES_A_BOLD);
             }
             if (isset($line['color'])){
                 ncurses_wcolor_set($this->window, $line['color']);
@@ -111,7 +119,6 @@ class Output
                 $this->buffer_last_color = $line['clicolor'];
             }
             ncurses_waddstr($this->window, $line['text']);
-
         }
         ncurses_wrefresh($this->window);
         ncurses_scrollok($this->window, 1);
@@ -123,9 +130,17 @@ class Output
         return strlen($color_string);
     }
 
-    private function addToBuffer($text){
+    protected function addToBuffer($text){
         static $last_symbol = "\n";
-        $this->rows[] = ($text);
+
+        if (empty($text)){
+            $this->buffer_last_color = "\033[0m";
+        }
+
+        if (substr($text, 0, 1) === "\n"){
+            $text = substr($text, 1);
+            $last_symbol = "\n";
+        }
 
         if ($last_symbol !== "\n"){
             if (strpos($text, "\n") === false){
@@ -134,28 +149,29 @@ class Output
                     $pos = $this->col - $this->strlen($last_buffer);
                     $last_buffer .= $this->buffer_last_color . substr($text, 0, $pos);
                     $text = substr($text, $pos);
-                    $this->buffer = array_merge($this->buffer, str_split($text, $this->col));
+                    foreach (str_split($text, $this->col) as $str){
+                        $this->buffer[] = $this->buffer_last_color . $str;
+                    }
                 }
                 else {
                     $last_buffer .= $this->buffer_last_color . $text;
                 }
-                $this->buffer_last_color = '';
+                $this->buffer_last_color = "\033[0m";
                 $last_symbol = '';
-                $this->buffer_line = count($this->buffer) - 1;
+                $this->buffer_line = count($this->buffer);
                 return;
             }
             $this->buffer[count($this->buffer) - 1] .= $this->buffer_last_color . substr($text, 0, strpos($text, "\n"));
-            $this->buffer_last_color = '';
+            $this->buffer_last_color = "\033[0m";
             $text = substr($text, strpos($text, "\n") + 1);
-            if (empty($text)){
+            if (empty($text) || $text === "\n"){
                 $last_symbol = "\n";
                 return;
             }
             if (strpos($text, "\n") === false){
                 $this->buffer[] = $this->buffer_last_color . $text;
-                $this->buffer_last_color = '';
-                $last_symbol = "\n";
-                $this->buffer_line = count($this->buffer) - 1;
+                $this->buffer_last_color = "\033[0m";
+                $this->buffer_line = count($this->buffer);
                 return;
             }
         }
@@ -163,14 +179,17 @@ class Output
         $last_symbol = substr($text, -1);
 
         if ($last_symbol === "\n"){
-            $text = substr($text, 0, -1);
+            $text = "\033[0;31m" . substr($text, 0, -1);
         }
 
         $lines = explode("\n", $text);
         foreach ($lines as $line){
-            $this->buffer = array_merge($this->buffer, str_split($line, $this->col));
+            foreach (str_split($line, $this->col) as $str){
+                $this->buffer[] = $this->buffer_last_color . $str;
+            }
         }
-        $this->buffer_line = count($this->buffer) - 1;
+        $this->buffer_last_color = "\033[0m";
+        $this->buffer_line = count($this->buffer);
     }
 
     private function parseColorString($text){
@@ -181,6 +200,8 @@ class Output
         $buffer = $text;
         $output = '';
         $line   = array();
+        $line['color'] = NCURSES_COLOR_WHITE;
+        $line['bold']  = 0;
         while ( false !== ($p = strpos($buffer, "\x1b"))){
             $output = substr($buffer, 0, $p);
 
@@ -235,8 +256,8 @@ class Output
     }
 
 
-    public function __destruct(){
-        file_put_contents('buffer', implode("\n", $this->buffer) . "\n" );
+    public function dump(){
+        file_put_contents('buffer', getmypid() . "\n" . print_r($this->buffer, true), FILE_APPEND);
     }
 
     public function erase(){

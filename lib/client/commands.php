@@ -8,29 +8,27 @@ function command_manager($command){
     if ( !$cache ){
         foreach ( $commands as $key => $function ){
             $key = iconv( 'UTF-8', 'KOI8-R', $key );
-            foreach ( str_split( $key ) as $k ){
+            foreach ( explode(' ', $key ) as $k ){
                 $cache[$k] = $function;
             }
         }
     }
 
-    write_log(sprintf( "KEY: %x", ( int ) ord( $command ) ));
+    write_log(sprintf( "KEY: 0x%x 0d%d %s", $command, $command, chr($command) ));
 
-    if ( isset( $cache[$command] ) ){
-        $cache[$command]();
-        return true;
+	if ( isset( $cache[$command]) ){
+		return $cache[$command]();
+	}
+
+    if ( isset( $cache[chr($command)] ) ){
+        return $cache[chr($command)]();
     }
+
     return false;
 }
 
 function command_exit(  ){
-    global $socket, $address, $port, $pid;
-
-    posix_kill( $pid, SIGUSR1);
-    pcntl_wait($status); //Protect against Zombie children
-    ncurses_end();
-
-    exit;
+    return 0;
 }
 
 function command_debug(){
@@ -100,4 +98,24 @@ function command_prompt(  ){
             exit( 0 );
         }
     }
+}
+
+function command_scrollup(){
+	global $iostream;
+    $iostream->get('output')->scroll(-38);
+}
+
+function command_scrolldown(){
+	global $iostream;
+    $iostream->get('output')->scroll(+38);
+}
+
+function command_scrollup_one(){
+	global $iostream;
+    $iostream->get('output')->scroll(-1);
+}
+
+function command_scrolldown_one(){
+	global $iostream;
+    $iostream->get('output')->scroll(+1);
 }
