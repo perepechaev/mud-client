@@ -17,6 +17,8 @@ define ( 'KEY_LEFT',        269);
 define ( 'KEY_RIGHT',       261);
 define ( 'KEY_UP',          259);
 define ( 'KEY_DOWN',        258);
+define ( 'KEY_PAGEUP',      339);
+define ( 'KEY_PAGEDOWN',    338);
 
 $GLOBALS['debug'] = 0;
 
