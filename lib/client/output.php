@@ -38,10 +38,14 @@ class Output
             ncurses_init_pair($color, $color, -1);
         }
     }
+
+    public function display_cursor(){
+        ncurses_wrefresh($this->window);
+    }
+
     public function addstr($text){
         $this->add($text);
     }
-
 
     public function add($text){
         $lines = $this->parseColorString($text);
@@ -193,6 +197,12 @@ class Output
     }
 
     private function parseColorString($text){
+        static $tail = '';
+
+        if ($tail){
+            $text = $tail . $text;
+            $tail = '';
+        }
 
         $result = array();
         $colors = $this->colors;
@@ -209,6 +219,10 @@ class Output
             $result[] = $line;
 
             $e      = strpos($buffer, "m", $p);
+
+            if ($e === false){
+                break;
+            }
 
             $pair   = substr($buffer, $p + 2, $e - $p - 2);
             $line = array();
@@ -247,11 +261,13 @@ class Output
             $buffer = substr($buffer, $e + 1 );
         }
 
-        #$this->addToBuffer($buffer);
+        if (strpos($buffer, "\033") !== false){
+            $tail = substr($buffer, strpos($buffer, "\033"));
+            $buffer = substr($buffer, 0, strpos($buffer, "\033") - 1);
+        }
+
         $line['text'] = $buffer;
         $result[] = $line;
-        #ncurses_waddstr($this->window, $buffer);
-        #ncurses_wrefresh($this->window);
         return $result;
     }
 

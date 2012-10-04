@@ -33,7 +33,6 @@ if ( $socket ){
     $conected = socket_connect( $socket, $address, $port);
 }
 
-
 require_once __DIR__ . '/../lib/client/iostream.php';
 require_once __DIR__ . '/../lib/client/iowindow.php';
 
@@ -61,12 +60,9 @@ if ($pid == -1) {
 } else if ($pid) {
 
     while (true){
-        #$input  = fgetc(STDIN);
-
         $input = ncurses_getch();
-        $input = chr($input);
 
-        write_log(sprintf("CHAR %s ord(%d)", $input, (int) ord($input)));
+        write_log(sprintf("CHAR %x ord(%d)", $input, $input));
 
         if ( $input === false ){
             continue;
@@ -84,11 +80,15 @@ if ($pid == -1) {
     }
 } 
 else {
-    // we are the child
     while ( true ){
         $server = @socket_read( $socket, 1024 );
         if ( $server ){
             $iostream->send('output', $server);
+            $iostream->event('prompt', 'display_cursor');
         }
     }
+}
+
+function df($name, $msg){
+    file_put_contents($name, "\n=========\n" . iconv('KOI8-R', 'UTF-8', $msg), FILE_APPEND);
 }
