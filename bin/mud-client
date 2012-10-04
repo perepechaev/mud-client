@@ -70,7 +70,15 @@ if ($pid == -1) {
             continue;
         }
 
-        command_manager( $input );
+        $result = command_manager( $input );
+
+        if ($result === 0){
+            $iostream->event('output', 'dump');
+            posix_kill( $pid, SIGUSR1);
+            pcntl_wait($status); //Protect against Zombie children
+            ncurses_end();
+            break;
+        }
     }
 } 
 else {
