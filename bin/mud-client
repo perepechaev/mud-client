@@ -26,7 +26,6 @@ ncurses_init();
 ncurses_noecho();
 ncurses_start_color();
 
-
 $socket = @socket_create( AF_INET, SOCK_STREAM, SOL_TCP);
 $connected = 0; 
 if ( $socket ){
@@ -36,6 +35,9 @@ if ( $socket ){
 require_once __DIR__ . '/../lib/client/iostream.php';
 require_once __DIR__ . '/../lib/client/iowindow.php';
 
+require_once __DIR__ . '/../lib/client/color.php';
+require_once __DIR__ . '/../lib/client/buffer.php';
+require_once __DIR__ . '/../lib/client/window.php';
 require_once __DIR__ . '/../lib/client/output.php';
 require_once __DIR__ . '/../lib/client/prompt.php';
 require_once __DIR__ . '/../lib/client/input.php';
@@ -71,7 +73,7 @@ if ($pid == -1) {
         $result = command_manager( $input );
 
         if ($result === 0){
-            $iostream->event('output', 'dump');
+            //$iostream->event('output', 'dump');
             posix_kill( $pid, SIGUSR1);
             pcntl_wait($status); //Protect against Zombie children
             ncurses_end();
@@ -80,6 +82,7 @@ if ($pid == -1) {
     }
 } 
 else {
+    $iostream->event('output', 'init');
     while ( true ){
         $server = @socket_read( $socket, 1024 );
         if ( $server ){

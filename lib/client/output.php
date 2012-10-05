@@ -1,18 +1,14 @@
 <?php
 
-class Output
+class Output extends Window
 {
-    protected $window;
-    private $colors;
-    protected $cursor = 0;
-
-    protected $row;
-    protected $col;
-
-    private $buffer = array();
+    /* @var Buffer */
+    private $buffer;
     private $buffer_last_color = '';
 
     private $buffer_line = 0;
+
+    private $scrolling = 0;
 
     public function __construct(){
         ncurses_getmaxyx(STDSCR, $row, $col);
@@ -39,38 +35,16 @@ class Output
         }
     }
 
-    public function display_cursor(){
-        ncurses_wrefresh($this->window);
+    public function init(){
+        $this->buffer = new Buffer($this->row, $this->col);
     }
 
-    public function addstr($text){
-        $this->add($text);
-    }
-
-    public function add($text){
-        $lines = $this->parseColorString($text);
-
-        foreach ($lines as $line){
-            if (isset($line['bold'])){
-                $line['bold'] ? ncurses_wattron($this->window, NCURSES_A_BOLD)
-                              : ncurses_wattroff($this->window, NCURSES_A_BOLD);
-
-            }
-            if (isset($line['stand'])){
-                // DONT USED
-                $line['stand'] ? ncurses_wstandend($this->window)
-                               : ncurses_wattroff($this->window, NCURSES_A_BOLD);
-            }
-            if (isset($line['color'])){
-                ncurses_wcolor_set($this->window, $line['color']);
-            }
-            if (isset($line['clicolor'])){
-                $this->buffer_last_color = $line['clicolor'];
-            }
-            ncurses_waddstr($this->window, $line['text']);
-            $this->addToBuffer($line['text']);
+    protected function hookAddColorString($line){
+        if (isset($line['clicolor'])){
+            $this->buffer->setColor($line['clicolor']);
         }
-        ncurses_wrefresh($this->window);
+        $this->buffer->add($line['text']);
+        $this->buffer_line = $this->buffer->getCountLines();
     }
 
     public function scroll($direction = -1){
@@ -81,8 +55,12 @@ class Output
             $start = 0;
         }
 
-        if ($start > count($this->buffer) - $this->row){
-            $start = count($this->buffer) - $this->row;
+        if ($direction === 0){
+            return;
+        }
+
+        if ($start > $this->buffer->getCountLines() - $this->row){
+            $start = $this->buffer->getCountLines() - $this->row;
             $direction = $start - $current;
         }
 
@@ -93,12 +71,12 @@ class Output
         if ($direction > 0){
             // Down
             ncurses_wmove($this->window, $this->row - $direction, 0);
-            $strings = array_slice($this->buffer, $start + $this->row - $direction, $lines);
+            $strings = $this->buffer->getLines($start + $this->row - $direction, $lines);
         }
         else {
             // Up
             ncurses_wmove($this->window, 0, 0);
-            $strings = array_slice($this->buffer, $start, $lines);
+            $strings = $this->buffer->getLines($start, $lines);
         }
 
         $text = '';
@@ -124,156 +102,17 @@ class Output
             }
             ncurses_waddstr($this->window, $line['text']);
         }
-        ncurses_wrefresh($this->window);
         ncurses_scrollok($this->window, 1);
+        ncurses_wrefresh($this->window);
     }
     
     private function strlen($color_string){
-        $color_string = preg_replace("/(\033\[\d+(;\d+)?m)/", '', $color_string);
-        
-        return strlen($color_string);
+        return Color::strlen($color_string);
     }
-
-    protected function addToBuffer($text){
-        static $last_symbol = "\n";
-
-        if (empty($text)){
-            $this->buffer_last_color = "\033[0m";
-        }
-
-        if (substr($text, 0, 1) === "\n"){
-            $text = substr($text, 1);
-            $last_symbol = "\n";
-        }
-
-        if ($last_symbol !== "\n"){
-            if (strpos($text, "\n") === false){
-                $last_buffer = &$this->buffer[count($this->buffer) - 1];
-                if ($this->strlen($last_buffer . $text) > $this->col){
-                    $pos = $this->col - $this->strlen($last_buffer);
-                    $last_buffer .= $this->buffer_last_color . substr($text, 0, $pos);
-                    $text = substr($text, $pos);
-                    foreach (str_split($text, $this->col) as $str){
-                        $this->buffer[] = $this->buffer_last_color . $str;
-                    }
-                }
-                else {
-                    $last_buffer .= $this->buffer_last_color . $text;
-                }
-                $this->buffer_last_color = "\033[0m";
-                $last_symbol = '';
-                $this->buffer_line = count($this->buffer);
-                return;
-            }
-            $this->buffer[count($this->buffer) - 1] .= $this->buffer_last_color . substr($text, 0, strpos($text, "\n"));
-            $this->buffer_last_color = "\033[0m";
-            $text = substr($text, strpos($text, "\n") + 1);
-            if (empty($text) || $text === "\n"){
-                $last_symbol = "\n";
-                return;
-            }
-            if (strpos($text, "\n") === false){
-                $this->buffer[] = $this->buffer_last_color . $text;
-                $this->buffer_last_color = "\033[0m";
-                $this->buffer_line = count($this->buffer);
-                return;
-            }
-        }
-
-        $last_symbol = substr($text, -1);
-
-        if ($last_symbol === "\n"){
-            $text = "\033[0;31m" . substr($text, 0, -1);
-        }
-
-        $lines = explode("\n", $text);
-        foreach ($lines as $line){
-            foreach (str_split($line, $this->col) as $str){
-                $this->buffer[] = $this->buffer_last_color . $str;
-            }
-        }
-        $this->buffer_last_color = "\033[0m";
-        $this->buffer_line = count($this->buffer);
-    }
-
-    private function parseColorString($text){
-        static $tail = '';
-
-        if ($tail){
-            $text = $tail . $text;
-            $tail = '';
-        }
-
-        $result = array();
-        $colors = $this->colors;
-
-        $buffer = $text;
-        $output = '';
-        $line   = array();
-        $line['color'] = NCURSES_COLOR_WHITE;
-        $line['bold']  = 0;
-        while ( false !== ($p = strpos($buffer, "\x1b"))){
-            $output = substr($buffer, 0, $p);
-
-            $line['text'] = $output;
-            $result[] = $line;
-
-            $e      = strpos($buffer, "m", $p);
-
-            if ($e === false){
-                break;
-            }
-
-            $pair   = substr($buffer, $p + 2, $e - $p - 2);
-            $line = array();
-            $line['clicolor'] = "\033[" . $pair . "m";
-            $pair   = explode(';', $pair);
-            $color  = count($pair) > 1 ? $pair[1] : '37';
-
-            if (isset($colors[$color]) === false){
-                ncurses_end();
-                var_dump("Incorrect color: ", var_export($color, true));
-                var_dump($pair);
-                die;
-            }
-
-            if ($pair[0]){
-                $line['bold'] = 1;
-                #ncurses_wattron($this->window, NCURSES_A_BOLD);
-            }
-            else{
-                $line['bold'] = 0;
-                #ncurses_wattroff($this->window, NCURSES_A_BOLD);
-            }
-
-
-            if (count($pair) === 1 && $pair[0] === '0'){
-                $line['stand'] =  0;
-                $line['color'] =  NCURSES_COLOR_WHITE;
-                #ncurses_wstandend($this->window);
-                #ncurses_wcolor_set($this->window, NCURSES_COLOR_WHITE);
-            }
-            else{
-                $line['color'] = $colors[$color];
-                #ncurses_wcolor_set($this->window, $colors[$color]);
-            }
-
-            $buffer = substr($buffer, $e + 1 );
-        }
-
-        if (strpos($buffer, "\033") !== false){
-            $tail = substr($buffer, strpos($buffer, "\033"));
-            $buffer = substr($buffer, 0, strpos($buffer, "\033") - 1);
-        }
-
-        $line['text'] = $buffer;
-        $result[] = $line;
-        return $result;
-    }
-
 
     public function dump(){
-        file_put_contents('buffer', getmypid() . "\n" . print_r($this->buffer, true), FILE_APPEND);
+        //file_put_contents('buffer', getmypid() . "\n" . print_r($this->buffer, true), FILE_APPEND);
+        df('buffer', print_r($this->buffer->getLines(0, $this->buffer->getCountLines() - 1), true));
     }
 
     public function erase(){

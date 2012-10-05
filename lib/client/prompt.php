@@ -1,10 +1,9 @@
 <?php
 
-class Prompt extends Output
+class Prompt extends Window 
 {
     protected $row;    
     protected $col;
-    protected $cursor = 1;
 
     /**
      * @var PromptInput
