@@ -47,8 +47,6 @@ require_once __DIR__ . '/../lib/client/input.php';
 require_once __DIR__ . '/../lib/client/history.php';
 require_once __DIR__ . '/../lib/client/commands.php';
 
-require_once __DIR__ . '/../etc/key-binding.php';
-
 $prompt = new Prompt();
 $output = new Output();
 
