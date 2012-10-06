@@ -102,12 +102,12 @@ function command_prompt(  ){
 
 function command_scrollup(){
 	global $iostream;
-    $iostream->get('output')->scroll(-38);
+    $iostream->get('output')->scroll(BUFFER_UP);
 }
 
 function command_scrolldown(){
 	global $iostream;
-    $iostream->get('output')->scroll(+38);
+    $iostream->get('output')->scroll(BUFFER_DOWN);
 }
 
 function command_scrollup_one(){

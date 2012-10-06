@@ -20,6 +20,9 @@ define ( 'KEY_DOWN',        258);
 define ( 'KEY_PAGEUP',      339);
 define ( 'KEY_PAGEDOWN',    338);
 
+define ( 'BUFFER_UP',       'up');
+define ( 'BUFFER_DOWN',     'down');
+
 $GLOBALS['debug'] = 0;
 
 ncurses_init();

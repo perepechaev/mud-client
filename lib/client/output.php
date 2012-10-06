@@ -8,7 +8,11 @@ class Output extends Window
 
     private $buffer_line = 0;
 
-    private $scrolling = 0;
+    private $withoutBuffer = false;
+
+    private $scrolling = false;
+
+    private $output;
 
     public function __construct(){
         ncurses_getmaxyx(STDSCR, $row, $col);
@@ -40,15 +44,37 @@ class Output extends Window
     }
 
     protected function hookAddColorString($line){
+
+        if ($this->withoutBuffer){
+            return;
+        }
+
         if (isset($line['clicolor'])){
             $this->buffer->setColor($line['clicolor']);
         }
         $this->buffer->add($line['text']);
-        $this->buffer_line = $this->buffer->getCountLines();
     }
 
     public function scroll($direction = -1){
-        $current = $this->buffer_line - $this->row;
+
+        static $buffer_win, $buffer;
+
+        $height = 10;
+
+        if ($direction === BUFFER_UP){
+            $direction = $height - $this->row + 1;
+        }
+
+        if ($direction === BUFFER_DOWN){
+            $direction = $this->row - $height - 1;
+        }
+
+        if ($this->scrolling === false){
+            $this->buffer_line = $this->buffer->getCountLines() - $height;
+        }
+
+        $current = $this->buffer_line - $this->row + $height + 1;
+
         $start   = $current + $direction ;
         if ($start < 0){
             $direction -= $start;
@@ -59,23 +85,56 @@ class Output extends Window
             return;
         }
 
-        if ($start > $this->buffer->getCountLines() - $this->row){
-            $start = $this->buffer->getCountLines() - $this->row;
-            $direction = $start - $current;
+        if ($this->scrolling && $start > $this->buffer->getCountLines() - $this->row){
+            $this->window = $this->output;
+            $this->scrolling = false;
+            ncurses_wmove($this->window, 0, 0);
+            $lines = $this->buffer->getLines( $this->buffer->getCountLines() - $this->row, $this->row);
+            $this->withoutBuffer = true;
+            $this->add(implode("\n", $lines));
+            $this->withoutBuffer = false;
+            return;
+        }
+        elseif ($start > $this->buffer->getCountLines() - $this->row){
+            return;
         }
 
-        ncurses_wscrl($this->window, $direction);
-        ncurses_scrollok($this->window, 0);
+        if ($this->scrolling === false){
+            $this->output = $this->window;
+            $this->window = ncurses_newwin($height - 1, $this->col, $this->row - $height + 1, 0);
+            $buffer       = new Window($this->row - $height, $this->col, 0, 0);
+            $buffer_win   = $buffer->getWindow();
 
-        $lines = min($this->row, abs($direction));
+            $hr           = ncurses_newwin(1, $this->col, $this->row - $height - 1, 0);
+            ncurses_whline($hr, ord('~' /* ─ */), $this->col);
+            ncurses_wrefresh($hr);
+
+            ncurses_scrollok($this->window, 1);
+            ncurses_wattroff($this->window, 1);
+
+            $buffer_start = $this->buffer->getCountLines() - $this->row + $direction + 1;
+            $buffer_count = $this->row - $height - 1;
+            $lines = $this->buffer->getLines($buffer_start, $buffer_count); 
+            df('current', $buffer_start + 1 . " $buffer_count");
+            $buffer->add(implode("\n", $lines));
+            $this->buffer_line += $direction;
+
+            $this->scrolling = true;
+            return;
+        }
+
+        ncurses_wscrl($buffer_win, $direction);
+        ncurses_scrollok($buffer_win, 0);
+
+        $lines = min($this->row - $height, abs($direction));
         if ($direction > 0){
             // Down
-            ncurses_wmove($this->window, $this->row - $direction, 0);
-            $strings = $this->buffer->getLines($start + $this->row - $direction, $lines);
+            ncurses_wmove($buffer_win, $this->row - $height - $direction - 1, 0);
+            $strings = $this->buffer->getLines($start - $direction + $this->row - $height - 1, $lines);
         }
         else {
             // Up
-            ncurses_wmove($this->window, 0, 0);
+            ncurses_wmove($buffer_win, 0, 0);
             $strings = $this->buffer->getLines($start, $lines);
         }
 
@@ -85,25 +144,11 @@ class Output extends Window
             $text .= $string . $last;
         }
         $strings = rtrim($text);
+        $buffer->add($text);
 
-        $this->buffer_line = $start + $this->row;
-        $lines = $this->parseColorString($strings);
-
-        foreach ($lines as $line){
-            if (isset($line['bold'])){
-                $line['bold'] ? ncurses_wattron($this->window, NCURSES_A_BOLD)
-                              : ncurses_wattroff($this->window, NCURSES_A_BOLD);
-            }
-            if (isset($line['color'])){
-                ncurses_wcolor_set($this->window, $line['color']);
-            }
-            if (isset($line['clicolor'])){
-                $this->buffer_last_color = $line['clicolor'];
-            }
-            ncurses_waddstr($this->window, $line['text']);
-        }
-        ncurses_scrollok($this->window, 1);
-        ncurses_wrefresh($this->window);
+        $this->buffer_line = $start + $this->row - $height - 1;
+        ncurses_scrollok($buffer_win, 1);
+        ncurses_wrefresh($buffer_win);
     }
     
     private function strlen($color_string){
