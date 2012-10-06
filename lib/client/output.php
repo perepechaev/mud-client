@@ -115,7 +115,6 @@ class Output extends Window
             $buffer_start = $this->buffer->getCountLines() - $this->row + $direction + 1;
             $buffer_count = $this->row - $height - 1;
             $lines = $this->buffer->getLines($buffer_start, $buffer_count); 
-            df('current', $buffer_start + 1 . " $buffer_count");
             $buffer->add(implode("\n", $lines));
             $this->buffer_line += $direction;
 

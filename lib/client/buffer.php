@@ -19,7 +19,6 @@ class Buffer
     }
 
     public function getLines($start, $length){
-        df('getLines', "Start: $start, Length: $length");
         return array_slice($this->buffer, $start, $length);
     }
 
