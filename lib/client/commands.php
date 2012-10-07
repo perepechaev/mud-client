@@ -186,8 +186,6 @@ function command_scrolloff(){
 function command_send($arg){
     global $iostream, $socket;
 
-    $iostream->get('output')->addstr("\033[0;34m" . implode(";", $arg) . "\033[0m");
-    foreach ($arg as $cmd){
-        $status = @socket_write( $socket, $cmd . "\n" );
-    }
+    $iostream->get('output')->addstr("\033[0;34m" . implode(";", $arg) . "\033[0m\n");
+    $status = @socket_write( $socket, implode("\n" ,$arg) . "\n" );
 }
