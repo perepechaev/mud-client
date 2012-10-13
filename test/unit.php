@@ -21,9 +21,9 @@ for ($i = 30; $i < 38; $i++){
 
 Color::init($colors);
 
-$color = new Color(37);
 
 // ======================================
+$color = new Color(37);
 $some = array(
     array(
         'color' => 37,
@@ -35,6 +35,7 @@ eq($some, $color->parse("Some text"), __FILE__ . ":" . __LINE__);
 
 
 // ======================================
+$color = new Color(37);
 $value = "Some \033[0;36mtext";
 $expect = array(
     array(
@@ -52,6 +53,7 @@ $expect = array(
 eq($expect, $color->parse($value), __FILE__ . ":" . __LINE__);
 
 // ======================================
+$color = new Color(37);
 $value = "Some \033[0;36m\ntext";
 $expect = array(
     array(
@@ -69,6 +71,7 @@ $expect = array(
 eq($expect, $color->parse($value), __FILE__ . ":" . __LINE__);
 
 // ======================================
+$color = new Color(37);
 $value1 = "Some \033[0;3";
 $value2 = "6mtext";
 $expect = array(
@@ -115,4 +118,8 @@ function eq($expection, $value, $msg){
         return;
     }
     echo ".";
+}
+
+function df($filename, $message){
+    echo "\033[0;31mError: \033[0m $filename\n$message\n";
 }

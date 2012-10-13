@@ -144,7 +144,7 @@ function command_prompt(  ){
         if ( $cmd  === false ){
             break;
         }
-        $iostream->get('output')->addstr("\033[1;33m\n$cmd\033[0m");
+        $iostream->get('output')->addstr("\033[1;33m$cmd\033[0m\n");
 
         $status = @socket_write( $socket, $cmd . "\n" );
         if ( $status === false){

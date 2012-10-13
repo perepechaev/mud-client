@@ -29,9 +29,7 @@ class Color
 
         if ($this->tail_color){
             $text = $this->tail_color . $text;
-            $line['clicolor'] = substr($text, 0, strpos($text, 'm') + 1);
-
-            $line['color'] = $this->default_color;
+            $line = $this->getColorByCliPair(substr($text, 2, strpos($text, 'm') - 2));
 
             $this->tail_color = '';
             $text = substr($text, strpos($text, 'm') + 1);
@@ -64,6 +62,7 @@ class Color
 
         $line['text'] = $buffer;
         $result[] = $line;
+        $this->last_color = $line['color'];
         return $result;
     }
 
@@ -84,7 +83,7 @@ class Color
         $line   = array();
 
         $pair   = explode(';', $pair);
-        $color  = count($pair) > 1 ? $pair[1] : $this->default_color;
+        $color  = count($pair) > 1 ? $pair[1] : self::$cli[$this->default_color];
 
         if (isset(self::$colors[$color]) === false){
             df('incorrect.color', __FILE__ . ":" . __LINE__ . "\n" . print_r($pair, true));
