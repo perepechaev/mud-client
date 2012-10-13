@@ -19,6 +19,7 @@ class Prompt extends Window
         ncurses_wrefresh($this->window);
 
         $this->input = new Input($this->window);
+        $this->color = new Color(NCURSES_COLOR_GREEN);
     }
 
     public function getCommand(){

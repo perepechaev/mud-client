@@ -16,11 +16,15 @@ class IOStream
     }
 
     public function send($name, $msg){
-        socket_write($this->writter, $name . "." . $msg . "\x1b\x1b");
+        if (strpos($msg, "\x01\x02") !== false){
+            df('input.cross.log', "Control symbol \\x01\\x02 founded\n" . var_export($msg, true));
+        }
+        $msg = str_replace("|", "\x01\x02", $msg);
+        socket_write($this->writter, "\x01\x01$name" . ".add|" . $msg . "\x02\x02");
     }
 
     public function event($name, $event){
-        socket_write($this->writter, "\x01$name" . "." . $event . "\x1b\x1b");
+        socket_write($this->writter, "\x01\x01$name" . "." . $event . "\x02\x02");
     }
 
     public function get($name){
@@ -60,22 +64,25 @@ class IOStream
         while (true){
             $input .= socket_read($this->reader, 1024);
 
-            if (substr($input, -2) !== "\x1b\x1b"){
+            if (substr($input, -2) !== "\x02\x02"){
                 continue;
             }
 
             $input = substr($input, 0, strlen($input)-2);
-            $commands = explode("\x1b\x1b", $input);
+            $commands = explode("\x02\x02", $input);
             $input = '';
 
-            foreach ($commands as $buffer){
+            foreach ($commands as $key => $buffer){
 
-                if (substr($buffer, 0, 1) === "\x01"){
-                    $name = substr($buffer, 1, strpos($buffer, ".") - 1);
+                if (substr($buffer, 0, 2) === "\x01\x01"){
+                    $name = substr($buffer, 2, strpos($buffer, ".") - 2);
                     $method = substr($buffer, strpos($buffer, '.') + 1);
                     $params = explode("|", $method);
                     $method = $params[0];
                     unset($params[0]);
+                    foreach ($params as &$param){
+                        $param = str_replace("\x01\x02", "|", $param);
+                    }
 
                     call_user_func_array(array($this->windows[$name], $method), $params);
                     $buffer = '';
@@ -83,23 +90,11 @@ class IOStream
                 }
 
                 if (empty($buffer)){
+                    df('error', __FILE__ . ":" . __LINE__ . " Empty buffer");
                     continue;
                 }
 
-                $name     = substr($buffer, 0, strpos($buffer, '.'));
-                $text     = substr($buffer, strpos($buffer, '.') + 1);
-
-                if ($name !== 'prompt' && $name !== 'output'){
-                    $buffer = '';
-                    df('error', __FILE__ . ":" . __LINE__);
-                    df('error', var_export($commands, true));
-                    df('error', var_export($input, true));
-                    continue;
-                }
-
-                $this->windows[$name]->add($text);
-
-                $buffer = '';
+                df('error', __FILE__  . ":" . __LINE__ . "\n" . bin2hex($buffer) . "\n" . $buffer);
             }
         }
     }

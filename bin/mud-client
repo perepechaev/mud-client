@@ -1,14 +1,17 @@
 #!/usr/local/bin/php
 <?php
 
-$port       = 9000;
-$address    = '192.168.1.33';
+#$port       = 9000;
+#$address    = '192.168.1.33';
 
-$port       = 9001;
-$address    = 'localhost';
+#$port       = 9001;
+#$address    = 'localhost';
 
 $port       = 9000;
 $address    = 'balderdash.ru';
+
+#$port       = 9000;
+#$address    = 'localhost';
 
 define ( 'KEY_ESC',         "\x1b" );
 define ( 'KEY_ENTER',       "\x0d" );
@@ -22,6 +25,8 @@ define ( 'KEY_PAGEDOWN',    338);
 
 define ( 'BUFFER_UP',       'up');
 define ( 'BUFFER_DOWN',     'down');
+
+define ( 'BUFFER_FILENAME', __DIR__ . '/../data/buffer.log');
 
 $GLOBALS['debug'] = 0;
 
@@ -46,6 +51,24 @@ require_once __DIR__ . '/../lib/client/prompt.php';
 require_once __DIR__ . '/../lib/client/input.php';
 require_once __DIR__ . '/../lib/client/history.php';
 require_once __DIR__ . '/../lib/client/commands.php';
+
+
+ncurses_init();
+ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
+$colors =  array(
+    '30'  => NCURSES_COLOR_BLACK,
+    '31'  => NCURSES_COLOR_RED,
+    '32'  => NCURSES_COLOR_GREEN,
+    '33'  => NCURSES_COLOR_YELLOW,
+    '34'  => NCURSES_COLOR_BLUE,
+    '35'  => NCURSES_COLOR_MAGENTA,
+    '36'  => NCURSES_COLOR_CYAN,
+    '37'  => NCURSES_COLOR_WHITE,
+);
+foreach ($colors as $color) {
+    ncurses_init_pair($color, $color, -1);
+}
+Color::init($colors);
 
 $prompt = new Prompt();
 $output = new Output();
@@ -84,11 +107,27 @@ if ($pid == -1) {
 } 
 else {
     $iostream->event('output', 'init');
+
+    // Load buffer
+    if (file_exists(BUFFER_FILENAME)){
+        $content = file_get_contents(BUFFER_FILENAME);
+        $content = str_replace("\000", "\033[1;31m.\033[0m", $content);
+        $content = explode("\n", $content);
+        $content = array_slice($content, count($content) - 1000);
+        $content = implode("\n", $content);
+        $iostream->send('output', $content);
+    }
+
     while ( true ){
         $server = @socket_read( $socket, 1024 );
         if ( $server ){
+            file_put_contents(BUFFER_FILENAME, $server, FILE_APPEND);
             $iostream->send('output', $server);
             $iostream->event('prompt', 'display_cursor');
+        }
+        else {
+            $iostream->send('output', 'Disconnect from server');
+            break;
         }
     }
 }

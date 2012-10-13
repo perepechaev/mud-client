@@ -23,24 +23,11 @@ class Output extends Window
         ncurses_scrollok($this->window, 1);
         ncurses_wattroff($this->window, 1);
 
-        ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
-        $this->colors = array(
-            '30'  => NCURSES_COLOR_BLACK,
-            '31'  => NCURSES_COLOR_RED,
-            '32'  => NCURSES_COLOR_GREEN,
-            '33'  => NCURSES_COLOR_YELLOW,
-            '34'  => NCURSES_COLOR_BLUE,
-            '35'  => NCURSES_COLOR_MAGENTA,
-            '36'  => NCURSES_COLOR_CYAN,
-            '37'  => NCURSES_COLOR_WHITE,
-        );
-        foreach ($this->colors as $color) {
-            ncurses_init_pair($color, $color, -1);
-        }
     }
 
     public function init(){
         $this->buffer = new Buffer($this->row, $this->col);
+        $this->color  = new Color(NCURSES_COLOR_WHITE);
     }
 
     protected function hookAddColorString($line){

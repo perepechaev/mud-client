@@ -28,11 +28,7 @@ class Buffer
 
     public function add($text){
         static $last_symbol = "\n";
-        $text = str_replace("\x00", "", $text);
-
-        if (empty($text)){
-            $this->last_color = "\033[0m";
-        }
+        $text = str_replace("\x00", ".", $text);
 
         if (substr($text, 0, 1) === "\n"){
             $text = substr($text, 1);
@@ -53,7 +49,6 @@ class Buffer
                 else {
                     $last_buffer .= $this->last_color . $text;
                 }
-                $this->last_color = "\033[0m";
                 $last_symbol = '';
                 return;
             }
@@ -61,16 +56,14 @@ class Buffer
                 $this->buffer[] = '';
             }
             $this->buffer[count($this->buffer) - 1] .= $this->last_color . substr($text, 0, strpos($text, "\n"));
-            $this->last_color = "\033[0m";
             $text = substr($text, strpos($text, "\n") + 1);
             if (empty($text) || $text === "\n"){
                 $this->buffer[] = '';
-                $last_symbol = "\n";
+                $last_symbol = "";
                 return;
             }
             if (strpos($text, "\n") === false){
                 $this->buffer[] = $this->last_color . $text;
-                $this->last_color = "\033[0m";
                 return;
             }
         }
@@ -87,6 +80,5 @@ class Buffer
                 $this->buffer[] = $this->last_color . $str;
             }
         }
-        $this->last_color = "\033[0m";
     }
 }
