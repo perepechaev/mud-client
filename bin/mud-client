@@ -2,16 +2,16 @@
 <?php
 
 #$port       = 9000;
-#$address    = '192.168.1.33';
 
-#$port       = 9001;
-#$address    = 'localhost';
 
-$port       = 9000;
+$port       = 9000; 
 $address    = 'balderdash.ru';
 
-#$port       = 9000;
 #$address    = 'localhost';
+#$address    = '192.168.1.33';
+$address    = '192.168.1.34';
+#$port       = 9001;
+
 
 define ( 'KEY_ESC',         "\x1b" );
 define ( 'KEY_ENTER',       "\x0d" );
@@ -52,9 +52,9 @@ require_once __DIR__ . '/../lib/client/input.php';
 require_once __DIR__ . '/../lib/client/history.php';
 require_once __DIR__ . '/../lib/client/commands.php';
 
+require_once __DIR__ . '/../lib/client/plugin.php';
 
-ncurses_init();
-ncurses_assume_default_colors(NCURSES_COLOR_WHITE, -1);
+ncurses_assume_default_colors(NCURSES_COLOR_BLACK, NCURSES_COLOR_BLACK);
 $colors =  array(
     '30'  => NCURSES_COLOR_BLACK,
     '31'  => NCURSES_COLOR_RED,
@@ -66,7 +66,7 @@ $colors =  array(
     '37'  => NCURSES_COLOR_WHITE,
 );
 foreach ($colors as $color) {
-    ncurses_init_pair($color, $color, -1);
+    ncurses_init_pair($color, $color, NCURSES_COLOR_BLACK);
 }
 Color::init($colors);
 
@@ -77,6 +77,7 @@ $iostream = new IOStream();
 $iostream->addWindow('output', $output);
 $iostream->addWindow('prompt', $prompt);
 $iostream->run();
+
 
 $pid = pcntl_fork();
 if ($pid == -1) {
@@ -108,6 +109,10 @@ if ($pid == -1) {
 else {
     $iostream->event('output', 'init');
 
+    $iostream->send('output', "Connect to server\n");
+    $server = @socket_read( $socket, 1024 * 8);
+    $iostream->send('output', $server);
+
     // Load buffer
     if (file_exists(BUFFER_FILENAME)){
         $content = file_get_contents(BUFFER_FILENAME);
@@ -116,14 +121,24 @@ else {
         $content = array_slice($content, count($content) - 1000);
         $content = implode("\n", $content);
         $iostream->send('output', $content);
+        $iostream->send('output', "\033[0;31m---------------------------------------\033[0m\n");
     }
 
+    setlocale(LC_ALL, 'ru_RU.KOI8-R');
+    $manager = PluginManager::instance();
+
     while ( true ){
-        $server = @socket_read( $socket, 1024 );
+        $server = @socket_read( $socket, 1024 * 8);
         if ( $server ){
+
+            $manager->prepare($server);
             file_put_contents(BUFFER_FILENAME, $server, FILE_APPEND);
+
+            $manager->execute($server);
+
             $iostream->send('output', $server);
             $iostream->event('prompt', 'display_cursor');
+
         }
         else {
             $iostream->send('output', 'Disconnect from server');

@@ -76,6 +76,7 @@ class Color
             return array(
                 'color' => $this->default_color,
                 'bold'  => 0,
+                'reverse' => 0,
                 'clicolor' => "\033[0;" . self::$cli[$this->default_color] . "m",
             );
         }
@@ -99,12 +100,8 @@ class Color
             $line['color'] = self::$colors[$color];
         }
 
-        if ($pair[0]){
-            $line['bold'] = 1;
-        }
-        else{
-            $line['bold'] = 0;
-        }
+        $line['bold']  = (int) ($pair[0] == 1);
+        $line['reverse'] = (int) ($pair[0] == 2);
 
         $line['clicolor'] = "\033[" . implode(";", $pair) . "m";
 

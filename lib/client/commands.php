@@ -144,6 +144,15 @@ function command_prompt(  ){
         if ( $cmd  === false ){
             break;
         }
+
+        $cmd = explode(";", $cmd);
+        $cmd = implode("\n", $cmd);
+
+        if ( preg_match("/^(\d+)\s/", $cmd, $m) ){
+            $cmd = substr($cmd, strpos($cmd, ' ') + 1); 
+            $cmd = implode("\n", array_fill(0, $m[1], $cmd));
+        }
+
         $iostream->get('output')->addstr("\033[1;33m$cmd\033[0m\n");
 
         $status = @socket_write( $socket, $cmd . "\n" );
@@ -188,4 +197,23 @@ function command_send($arg){
 
     $iostream->get('output')->addstr("\033[0;34m" . implode(";", $arg) . "\033[0m\n");
     $status = @socket_write( $socket, implode("\n" ,$arg) . "\n" );
+}
+
+function command_include_file($filename){
+    static $loaded = array();
+    clearstatcache();
+
+    if (empty($loaded[$filename]) || filemtime($filename) > $loaded[$filename] ){
+        $loaded[$filename] = filemtime($filename);
+
+        if (php_check_syntax($filename, $error)){
+            return include $filename;
+        }
+        else {
+            global $iostream;
+            $iostream->get('output')->addstr("\033[1;30m" . implode("\n", $error) . "\033[0m\n"); 
+            return false;
+        }
+    };
+    return true;
 }

@@ -46,6 +46,7 @@ $expect = array(
     array(
         'color'     => 36,
         'bold'      => 0,
+        'reverse'   => 0,
         'clicolor'  => "\033[0;36m", 
         'text'      => 'text',
     )
@@ -64,6 +65,7 @@ $expect = array(
     array(
         'color'     => 36,
         'bold'      => 0,
+        'reverse'   => 0,
         'clicolor'  => "\033[0;36m", 
         'text'      => "\ntext",
     )
@@ -83,6 +85,7 @@ $expect = array(
     array(
         'color'     => 36,
         'bold'      => 0,
+        'reverse'   => 0,
         'clicolor'  => "\033[0;36m", 
         'text'      => "text",
     )

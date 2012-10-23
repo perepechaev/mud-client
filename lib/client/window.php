@@ -46,10 +46,13 @@ class Window
                               : ncurses_wattroff($this->window, NCURSES_A_BOLD);
 
             }
-            if (isset($line['stand'])){
-                // DONT USED
-                $line['stand'] ? ncurses_wstandend($this->window)
-                               : ncurses_wattroff($this->window, NCURSES_A_BOLD);
+            if (isset($line['reverse'])){
+                if ($line['reverse']){
+                    ncurses_wattron($this->window, NCURSES_A_REVERSE);
+                }
+                else {
+                    ncurses_wattroff($this->window, NCURSES_A_REVERSE);
+                }
             }
             if (isset($line['color'])){
                 ncurses_wcolor_set($this->window, $line['color']);

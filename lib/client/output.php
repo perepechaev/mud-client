@@ -88,11 +88,13 @@ class Output extends Window
 
         if ($this->scrolling === false){
             $this->output = $this->window;
-            $this->window = ncurses_newwin($height - 1, $this->col, $this->row - $height + 1, 0);
+            $this->window = ncurses_newwin($height, $this->col, $this->row - $height, 0);
             $buffer       = new Window($this->row - $height, $this->col, 0, 0);
             $buffer_win   = $buffer->getWindow();
 
             $hr           = ncurses_newwin(1, $this->col, $this->row - $height - 1, 0);
+            ncurses_wcolor_set($hr, NCURSES_COLOR_BLACK);
+            ncurses_wattron($hr, NCURSES_A_BOLD);
             ncurses_whline($hr, ord('~' /* ─ */), $this->col);
             ncurses_wrefresh($hr);
 
@@ -106,6 +108,12 @@ class Output extends Window
             $this->buffer_line += $direction;
 
             $this->scrolling = true;
+
+            $lines = $this->buffer->getLines( $this->buffer->getCountLines() - $height, $height);
+            $this->withoutBuffer = true;
+            $this->add(implode("\n", $lines));
+            $this->withoutBuffer = false;
+
             return;
         }
 
