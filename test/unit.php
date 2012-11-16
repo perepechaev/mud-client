@@ -102,7 +102,18 @@ foreach ($r as $i => $line){
     }
 }
 
-
+// ======================================
+$color = new Color(37);
+$value = "Some\r\n";
+$expect = array(
+    array(
+        'color'     => 37,
+        'bold'      => 0,
+        'text'      => "Some\r\n",
+    ),
+);
+eq($expect, $color->parse($value), __FILE__ . ":" . __LINE__);
+//eq($expect, $color->parse($value2), __FILE__ . ":" . __LINE__);
 
 echo "\n";
 

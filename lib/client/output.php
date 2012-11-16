@@ -30,7 +30,7 @@ class Output extends Window
         $this->color  = new Color(NCURSES_COLOR_WHITE);
     }
 
-    protected function hookAddColorString($line){
+    protected function hookAddColorString(array $line){
 
         if ($this->withoutBuffer){
             return;

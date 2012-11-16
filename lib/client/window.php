@@ -23,6 +23,8 @@ class Window
         ncurses_wattroff($this->window, 1);
 
         $this->color = new Color(NCURSES_COLOR_WHITE);
+		//ncurses_end();
+		//dd($this->color);
     }
     
     public function getWindow(){
@@ -57,7 +59,7 @@ class Window
             if (isset($line['color'])){
                 ncurses_wcolor_set($this->window, $line['color']);
             }
-            ncurses_waddstr($this->window, $line['text']);
+            ncurses_waddstr($this->window, str_replace("\r", "", $line['text']));
             $this->hookAddColorString($line);
         }
         ncurses_wrefresh($this->window);
