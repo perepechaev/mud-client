@@ -6,17 +6,15 @@ class Input
     private $history;
     public function __construct($window){
         $this->window = $window;
-        $this->history = new History();
+        $this->history = History::instance();
     }
 
     function get(){
 
         global $iostream;
 
-        static $history = array();
         static $cnt = 0;
 
-        $history = History::instance();
 
         $buffer = '';
         $output = '';
@@ -37,7 +35,7 @@ class Input
                     $GLOBALS['history']['cursor']++;
                 }
                 */
-                $history->add($output);
+                $this->history->add($output);
                 return $output;
             }
 
@@ -52,12 +50,12 @@ class Input
             }
 
             if ( $key === KEY_UP ){
-                $output = $history->search($buffer, -1);
+                $output = $this->history->search($buffer, -1);
                 continue;
             }
 
             if ( $key === KEY_DOWN ){
-                $output = $history->search($buffer, +1);
+                $output = $this->history->search($buffer, +1);
                 continue;
             }
 

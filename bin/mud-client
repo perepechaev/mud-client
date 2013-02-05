@@ -13,8 +13,8 @@ $address    = 'balderdash.ru';
 #$address    = '192.168.1.34';
 #$address    = 'tangent.dune.net';
 #$port       = 6667;
-$address    = 'aardmud.org';
-$port       = 23;
+#$address    = 'aardmud.org';
+#$port       = 23;
 
 
 define ( 'KEY_ESC',         "\x1b" );
@@ -82,6 +82,12 @@ $iostream->addWindow('output', $output);
 $iostream->addWindow('prompt', $prompt);
 $iostream->run();
 
+$history = History::instance();
+if (file_exists( __DIR__ . '/../data/history.php')){
+    $cmds = include __DIR__ . '/../data/history.php';
+    $history->setHistory($cmds);
+}
+
 $pid = pcntl_fork();
 if ($pid == -1) {
 
@@ -105,6 +111,8 @@ if ($pid == -1) {
             posix_kill( $pid, SIGUSR1);
             pcntl_wait($status); //Protect against Zombie children
             ncurses_end();
+
+            file_put_contents(__DIR__ . '/../data/history.php', '<?php return ' . var_export(History::instance()->getHistory(), true) . ';');
             break;
         }
     }
