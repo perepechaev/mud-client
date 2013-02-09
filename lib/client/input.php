@@ -4,12 +4,20 @@ class Input
 {
     private $window;
     private $history;
+    private $plugins = array();
+
     public function __construct($window){
         $this->window = $window;
         $this->history = History::instance();
+        $commands = command_include_file(APP_PATH . '/etc/input.php');
+
+        foreach ($commands as $key => $value){
+            $this->plugins[iconv('UTF-8', 'KOI8-R', $key)] = $value;
+        }
+        file_put_contents('plugins.log', print_r($this->plugins, true), FILE_APPEND);
     }
 
-    function get(){
+    public function get(){
 
         global $iostream;
 
@@ -36,6 +44,11 @@ class Input
                 }
                 */
                 $this->history->add($output);
+                if ($this->handle($output)){
+                    $output = '';
+                    $buffer = '';
+                    continue;
+                }
                 return $output;
             }
 
@@ -62,5 +75,23 @@ class Input
             $buffer .= $char;
             $output .= $char;
         }
+    }
+
+    public function handle($command){
+
+        global $iostream;
+
+        foreach ($this->plugins as $info => $value){
+            if (strpos($command, $info . ' ') === 0){
+                $plugin = $value::create();
+                $result = $plugin->command(substr($command, strlen($info) + 1));
+        
+                
+                $iostream->get('output')->addstr($result);
+                return true;
+            }
+        }
+
+        return false;
     }
 }

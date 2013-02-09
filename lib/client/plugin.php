@@ -7,6 +7,12 @@ interface IPlugin
     public function execute(&$text);
 }
 
+interface IInputPlugin
+{
+    public function command($command);
+    static public function create();
+}
+
 class PluginManager
 {
     private $plugins = array();
