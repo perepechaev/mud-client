@@ -17,8 +17,9 @@ class StufPlugin implements IInputPlugin
 
         $fields = array();
         $l = new SQLite3(':memory:');
-        while ($row = fgetcsv($fp, 0, ',', '"')){
+        while ($row = fgetcsv($fp, 0, ';', '"')){
             $row = array_map('trim', $row);
+
             $row = array_map(array($l, 'escapeString'), $row);
 
             if (empty($fields)){
@@ -28,7 +29,12 @@ class StufPlugin implements IInputPlugin
                     }
                 }
                 $fields_sql = '`' . implode("` STRING,`", $fields). '` STRING';
-                $this->db->query("CREATE TABLE stuf ($fields_sql)");
+                $result = $this->db->query("CREATE TABLE stuf ($fields_sql)");
+                if (!$result){
+                    global $iostream;
+                    $iostream->get('output')->addstr("\033[0;31m" . iconv('UTF-8', 'KOI8-R', $this->db->lastErrorMsg()) . "\033[0m\n");
+                    return;
+                }
 
                 $value_sql = array_fill(0, count($fields), '?');
                 $value_sql = implode(',', $value_sql);
@@ -51,13 +57,32 @@ class StufPlugin implements IInputPlugin
             
             $fields_sql = '`' . implode("`,`", $fields). '`';
             $value_sql  = implode(",", $row);
-            $this->db->exec("INSERT INTO stuf ($fields_sql) VALUES ($value_sql)");
+            try {
+                $result = $this->db->exec("INSERT INTO stuf ($fields_sql) VALUES ($value_sql)");
+            }
+            catch (Exception $e){
+                global $iostream;
+                $iostream->get('output')->addstr('eeeeeee');
+            }
+
+            if (!$result){
+                global $iostream;
+                $iostream->get('output')->addstr("SQLite error: " . $this->db->lastErrorMsg(). "\n");
+                $iostream->get('output')->addstr(iconv('UTF-8', 'KOI8-R', $fields_sql) . "\n");
+                $iostream->get('output')->addstr(iconv('UTF-8', 'KOI8-R', $value_sql) . "\n");
+                return;
+            }
 
         }
     }
 
     public function command($text){
         
+        if (empty($this->db)){
+            global $iostream;
+            $iostream->get('output')->addstr('DB Not initialized');
+            return;
+        }
         $output = '';
         $text = iconv("KOI8-R", 'UTF-8', $text);
         $sql = sprintf(
