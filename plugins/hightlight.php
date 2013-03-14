@@ -43,7 +43,7 @@ class Hightlight implements IPlugin
                 );
             }
 
-            $name = iconv('UTF-8', 'KOI8-R', $rule);
+            $name = lang($rule);
             $name = strtolower($name);
             //$name = strtolower($name);
 

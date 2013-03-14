@@ -23,8 +23,6 @@ class Window
         ncurses_wattroff($this->window, 1);
 
         $this->color = new Color(NCURSES_COLOR_WHITE);
-		//ncurses_end();
-		//dd($this->color);
     }
     
     public function getWindow(){
@@ -87,6 +85,11 @@ class Window
 
     public function erase(){
         ncurses_werase($this->window);
+        ncurses_wrefresh($this->window);
+    }
+
+    public function move($x, $y){
+        ncurses_wmove($this->window, $y, $x);
         ncurses_wrefresh($this->window);
     }
 }

@@ -5,17 +5,12 @@ $GLOBALS['history']['cursor'] = false;
 function command_manager($command){
     global $commands;
 
-    write_log(sprintf( "KEY: 0x%x 0d%d %s", $command, $command, chr($command) ));
-
+    write_log('COMMAND: ' . sprintf("0x%x", $command));
     $cache = load_key_binding();
 
     $func = false;
     if ( isset( $cache[$command]) ){
         $func = $cache[$command];
-    }
-
-    if ( isset( $cache[chr($command)] ) ){
-        $func = $cache[chr($command)];
     }
 
     if ($func){
@@ -55,8 +50,8 @@ function load_key_binding(){
     }
 
     foreach ( $commands as $key => $command){
-        $key = iconv( 'UTF-8', 'KOI8-R', $key );
-        $command = iconv('UTF-8', 'KOI8-R', $command);
+        $key = lang($key);
+        $command = lang( $command);
 
         $function = array();
         $pos = strpos($command, '|');
@@ -70,6 +65,21 @@ function load_key_binding(){
         }
 
         foreach ( explode(' ', $key ) as $k ){
+            if (empty($k)){
+                continue;
+            }
+
+            if (is_numeric($k) === false && strlen($k) > 0){
+
+                $b0 = ord($k[0]);
+                if ( $b0 < 0x10 || strlen($k) === 1) {
+                    $k = $b0;
+                }
+                else {
+                    $b1 = ord($k[1]);
+                    $k = ($b0 << 8) + $b1;
+                }
+            }
             $cache[$k] = $function;
         }
     }
@@ -77,6 +87,27 @@ function load_key_binding(){
     return $cache;
 }
 
+function getch(){
+    static $fp = null;
+    if (empty($fp)){
+        $fp = fopen('php://stdin', 'r');
+    };
+
+    stream_set_blocking($fp, 1);
+    $input = fgetc($fp);
+    $input = ord($input);
+    stream_set_blocking($fp, 0);
+
+    $buffer = $input;
+
+    while ( ($input = fgetc($fp)) !== false){
+        $buffer = $buffer << 8;
+        $buffer += ord($input);
+    };
+
+    stream_set_blocking($fp, 1);
+    return $buffer;
+}
 function php_check_syntax($file, &$error) {
     exec("php -l $file", $error, $code);
     if( $code == 0 ){
@@ -168,22 +199,22 @@ function command_prompt(  ){
 }
 
 function command_scrollup(){
-	global $iostream;
+    global $iostream;
     $iostream->get('output')->scroll(BUFFER_UP);
 }
 
 function command_scrolldown(){
-	global $iostream;
+    global $iostream;
     $iostream->get('output')->scroll(BUFFER_DOWN);
 }
 
 function command_scrollup_one(){
-	global $iostream;
+    global $iostream;
     $iostream->get('output')->scroll(-1);
 }
 
 function command_scrolldown_one(){
-	global $iostream;
+    global $iostream;
     $iostream->get('output')->scroll(+1);
 }
 

@@ -8,8 +8,8 @@ return array(
 
     'Q Й' => 'command_exit',
 
-    KEY_PAGEUP 		=> 'command_scrollup',
-    KEY_PAGEDOWN  	=> 'command_scrolldown',
+    KEY_PAGEUP      => 'command_scrollup',
+    KEY_PAGEDOWN    => 'command_scrolldown',
     KEY_UP          => 'command_scrollup_one',
     KEY_DOWN        => 'command_scrolldown_one',
 
@@ -50,6 +50,19 @@ return array(
 
     '-  '   => 'command_send|-',
     '0'     => 'command_plugins_reload',
+    KEY_F1      => 'command_send|PRESS F1',
+    KEY_F2      => 'command_send|PRESS F2',
+    KEY_F3      => 'command_send|PRESS F3',
+    KEY_F4      => 'command_send|PRESS F4',
+    KEY_F5      => 'command_send|PRESS F5',
+    KEY_F6      => 'command_send|PRESS F6',
+    KEY_F7      => 'command_send|PRESS F7',
+    KEY_F8      => 'command_send|PRESS F8',
+    KEY_F9      => 'command_send|PRESS F9',
+    KEY_F10     => 'command_send|PRESS F10',
+    KEY_F11     => 'command_send|PRESS F11',
+    KEY_F12     => 'command_send|PRESS F12',
+    KEY_INSERT  => 'command_send|PRESS INSERT',
 
     KEY_ESC => 'command_send|встать; вз коврик; колд "слово возврата"',
 );

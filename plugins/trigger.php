@@ -9,8 +9,8 @@ class Trigger extends Hightlight implements IPlugin
         $this->rules  = array();
         foreach ($rules as $rule => $value){
 
-            $name   = iconv('UTF-8', 'KOI8-R', $rule);
-            $value  = iconv('UTF-8', 'KOI8-R', $value);
+            $name   = lang($rule);
+            $value  = lang($value);
             
             $name   = strtolower($name);
 
