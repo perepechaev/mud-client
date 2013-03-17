@@ -42,8 +42,11 @@ define ( 'KEY_F12',         0x1b5b32347e);
 define ( 'KEY_INSERT',      0x1b5b327e);
 define ( 'KEY_CTRL_L',      0xc);
 define ( 'KEY_CTRL_K',      0xb);
-define ( 'KEY_ALT_RIGHT',   0x1b1b4f44);
-define ( 'KEY_ALT_LEFT',    0x1b1b4f43);
+define ( 'KEY_ALT_RIGHT',   0x1b1b4f43);
+define ( 'KEY_ALT_LEFT',    0x1b1b4f44);
+
+define ( 'KEY_ALT_B',       0x1b62); # NOT USED, because supported only latin
+define ( 'KEY_ALT_F',       0x1b66);
 
 define ( 'BUFFER_UP',       'up');
 define ( 'BUFFER_DOWN',     'down');
@@ -52,6 +55,7 @@ define ( 'BUFFER_FILENAME', __DIR__ . '/../data/buffer.log');
 
 $GLOBALS['debug'] = 0;
 
+ini_set('display_errors', 0);
 ncurses_init();
 ncurses_noecho();
 ncurses_start_color();
@@ -119,6 +123,10 @@ if ($pid == -1) {
         $input = getch();
 
         if ( $input === false ){
+            continue;
+        }
+
+        if ( $input === 0 ){
             continue;
         }
 

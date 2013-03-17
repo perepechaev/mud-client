@@ -95,6 +95,30 @@ class Input
                 continue;
             }
 
+            if ( $key === KEY_ALT_LEFT){
+                for ($i = $position - 1; $i >= 0; $i--){
+                    if ($input[$i] === ' '){
+                        write_log("Find space: " . $i);
+                        break;
+                    }
+                }
+                write_log('new position' . $i);
+                $position = $i;
+                $position = max(0, $position);
+                continue;
+            }
+
+            if ( $key === KEY_ALT_RIGHT){
+                for ($i = $position + 1; $i < count($input); $i++){
+                    if ($input[$i] === ' '){
+                        break;
+                    }
+                }
+                $position = $i;
+                $position = min(count($input), $position);
+                continue;
+            }
+
             if ( $key === KEY_HOME){
                 $position = 0;
                 continue;
