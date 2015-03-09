@@ -154,10 +154,21 @@ class Input
         global $iostream;
 
         foreach ($this->plugins as $info => $value){
-            if (strpos($command, $info . ' ') === 0){
+            $text = '';
+            if (is_numeric($info)){
+                $text = $command;
+            }
+            elseif ( strpos($command, $info . ' ') === 0){
+                $text = substr($command, strlen($info) + 1);
+            }
+
+            if ($text){
                 $plugin = $value::create();
-                $result = $plugin->command(substr($command, strlen($info) + 1));
+                $result = $plugin->command($text);
         
+                if ($result === false){
+                    continue;
+                }
                 
                 $iostream->get('output')->addstr($result);
                 return true;

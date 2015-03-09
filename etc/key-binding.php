@@ -34,10 +34,11 @@ return array(
     "b и"   => 'command_send|экипировка',
     "c с"   => 'command_send|счёт',
 
-    'w ц'   => 'command_send|взять коврик сумка; нелетать; брос коврик; отд коврик; укутаться',
-    'e у'   => 'command_send|встать; взять коврик; полож коврик сумка; гов торнел летать не хочешь?',
+    'w ц'   => 'command_send|спать',
+    'W Ц'   => 'command_send|отдыхать',
+    'e у'   => 'command_send|вст',
+    //'e у'   => 'command_send|встать; взять коврик; полож коврик желудок; гов торнел летать не хочешь?',
     'r к'   => 'command_send|снять странника; од странника',
-    'W Ц'   => 'command_send|спать',
     'E У'   => 'command_send|отдых',
     "\t"    => 'command_send|вст; беж; беж; беж',
 
@@ -64,5 +65,5 @@ return array(
     KEY_F12     => 'command_send|PRESS F12',
     KEY_INSERT  => 'command_send|PRESS INSERT',
 
-    KEY_ESC => 'command_send|встать; вз коврик; колд "слово возврата"',
+    //KEY_ESC => 'command_send|встать; вз коврик; колд "слово возврата"',
 );

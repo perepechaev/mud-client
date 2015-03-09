@@ -17,7 +17,7 @@ class StufPlugin implements IInputPlugin
 
         $fields = array();
         $l = new SQLite3(':memory:');
-        while ($row = fgetcsv($fp, 0, ';', '"')){
+        while ($row = fgetcsv($fp, 0, ',', '"')){
             $row = array_map('trim', $row);
 
             $row = array_map(array($l, 'escapeString'), $row);
@@ -29,6 +29,7 @@ class StufPlugin implements IInputPlugin
                     }
                 }
                 $fields_sql = '`' . implode("` STRING,`", $fields). '` STRING';
+
                 $result = $this->db->query("CREATE TABLE stuf ($fields_sql)");
                 if (!$result){
                     global $iostream;
@@ -84,11 +85,22 @@ class StufPlugin implements IInputPlugin
             return;
         }
         $output = '';
-        $text = iconv("KOI8-R", 'UTF-8', $text);
-        $sql = sprintf(
-            'SELECT * FROM stuf WHERE Назв like "%%%1$s%%" OR `К.Наз` like "%%%1$s%%"',
-            $text
-        );
+        $text = trim($text);
+        if (strpos($text, iconv('UTF-8', 'KOI8-R', 'запрос')) !== false){
+            $text = substr($text, 7);
+            $text = iconv("KOI8-R", 'UTF-8', $text);
+            $sql = sprintf(
+                'SELECT * FROM stuf WHERE %s',
+                $text
+            );
+        }
+        else {
+            $text = iconv("KOI8-R", 'UTF-8', $text);
+            $sql = sprintf(
+                'SELECT * FROM stuf WHERE Назв like "%%%1$s%%" OR `К.Наз` like "%%%1$s%%"',
+                $text
+            );
+        }
         $result = $this->db->query($sql); 
         if (empty($result)){
             return iconv('UTF-8', 'KOI8-R', "Ничего не найдено");
